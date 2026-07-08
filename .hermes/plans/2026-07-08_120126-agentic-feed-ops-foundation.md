@@ -17,7 +17,7 @@ Twutor should not become an infinite lesson dump. Agentic posting should feel li
 The new loop:
 
 ```text
-learner signals → content strategy brief → agent research → landing hypothesis → publish planned tutor posts → feed pacing → exposure/read signals → next brief
+learner signals → content strategy brief → agent research → post intent → publish tutor posts expected to land → feed pacing → exposure/read signals → next brief
 ```
 
 Three non-negotiables:
@@ -104,10 +104,10 @@ research_notes
 
 Why: agents should gather and compress complexity before writing feed posts.
 
-### Planned agentic posts
+### Agentic post intents
 
 ```text
-agentic_post_plans
+agentic_post_intents
   id
   brief_id
   tutor_id
@@ -126,7 +126,7 @@ agentic_post_plans
   published_at
 ```
 
-Why: agentic posting should be intentional. The unit is not “candidate draft”; it is “we believe this post will land because X.” The post can still carry internal provenance and risk notes, but the architecture should bias toward planned publication and learning from outcomes, not editorial backlog accumulation.
+Why: agentic posting should be intentional. The unit is not “candidate draft”; it is “we believe this post should land because X.” The post can still carry internal provenance and risk notes, but the architecture should bias toward posting decisions and learning from outcomes, not editorial backlog accumulation.
 
 ### Feed exposure events
 
@@ -201,7 +201,7 @@ bd create --parent twutor-ixj --type epic --priority P0 --title "Milestone 1.5: 
 Then create child issues for:
 
 - learner concept signals
-- planned agentic posts with landing hypotheses
+- agentic post intents with landing hypotheses
 - research-to-post content briefs
 - post insertion/publish lifecycle
 - feed exposure events
@@ -255,9 +255,9 @@ npm run typecheck
 
 ---
 
-### Task 3: Add planned agentic post schema
+### Task 3: Add agentic post intent schema
 
-**Objective:** Represent posts agents believe should be published, including the hypothesis for why each post should land.
+**Objective:** Represent posts agents believe should exist in the feed, including the hypothesis for why each post should land.
 
 **Files:**
 
@@ -267,7 +267,7 @@ npm run typecheck
 
 **Implementation notes:**
 
-Add `agenticPostPlans` with:
+Add `agenticPostIntents` with:
 
 - `briefId`
 - `tutorId`
@@ -285,10 +285,10 @@ Add `agenticPostPlans` with:
 
 Add pure helper functions first:
 
-- `validateAgenticPostPlan(plan)`
-- `agenticPlanToPostInsert(plan, sortOrder)`
+- `validateAgenticPostIntent(intent)`
+- `intentToPostInsert(intent, sortOrder)`
 
-Do not call an LLM yet. Use static fixtures in tests. The important behavior is that a plan must include a landing hypothesis and expected learner effect before it can be published.
+Do not call an LLM yet. Use static fixtures in tests. The important behavior is that an intent must include a landing hypothesis and expected learner effect before it can become a feed post.
 
 **Verification:**
 
@@ -301,7 +301,7 @@ npm run typecheck
 
 ### Task 4: Add content brief and research note schema
 
-**Objective:** Make generation strategy explicit before drafts are created.
+**Objective:** Make generation strategy explicit before posts are created.
 
 **Files:**
 
@@ -355,7 +355,7 @@ npm run typecheck
 Start with pure functions:
 
 - `scorePostForLearner(post, learnerConceptStates, exposureHistory)`
-- `scorePlanLandingLikelihood(plan, learnerConceptStates, exposureHistory)`
+- `scoreIntentLandingLikelihood(intent, learnerConceptStates, exposureHistory)`
 - `buildFeedPlan({ posts, conceptStates, exposureEvents, targetCount })`
 - `calculateUnseenRatio(posts, exposureEvents)`
 
@@ -416,24 +416,24 @@ npm run build
 
 ---
 
-### Task 7: Add first admin review surface
+### Task 7: Add first admin surface for agentic post intents
 
-**Objective:** Inspect planned posts and their landing hypotheses without turning the workflow into a giant candidate backlog.
+**Objective:** Inspect post intents and their landing hypotheses without turning the workflow into a giant candidate backlog.
 
 **Files:**
 
 - Create: `app/admin/feed/page.tsx`
 - Create: `app/admin/feed/actions.ts`
-- Create: `components/admin/agentic-post-plans.tsx` if componentization helps
+- Create: `components/admin/agentic-post-intents.tsx` if componentization helps
 
 **Implementation notes:**
 
 Keep it intentionally rough but safe:
 
-- list planned/published/retired agentic post plans
+- list planned/published/retired agentic post intents
 - show tutor, kind, body, landing hypothesis, expected learner effect, voice notes, risk notes
 - publish/retire controls
-- publish a planned post into `posts` plus attachment rows
+- publish an intended post into `posts` plus attachment rows
 - guard with `NODE_ENV !== "production"` or an explicit `ADMIN_FEED_ENABLED=true`
 
 **Verification:**
@@ -445,20 +445,20 @@ npm run build
 
 Manual check:
 
-- create fixture plan
+- create fixture intent
 - publish it
 - see it render in feed
 
 ---
 
-### Task 8: Add a non-LLM planned-post generator CLI
+### Task 8: Add a non-LLM post-intent generator CLI
 
-**Objective:** Exercise the architecture before integrating real LLM research agents by generating posts with explicit landing hypotheses.
+**Objective:** Exercise the architecture before integrating real LLM research agents by generating post intents with explicit landing hypotheses.
 
 **Files:**
 
-- Create: `scripts/plan-agentic-posts.ts`
-- Add script to `package.json`: `"content:plan": "tsx scripts/plan-agentic-posts.ts"`
+- Create: `scripts/create-agentic-post-intents.ts`
+- Add script to `package.json`: `"content:intent": "tsx scripts/create-agentic-post-intents.ts"`
 - Create: `tests/agentic-post-planner.test.ts` only if pure helpers can be extracted
 
 **Implementation notes:**
@@ -466,21 +466,21 @@ Manual check:
 The script can use deterministic templates at first:
 
 ```text
-Given a content brief, learner concept state, recent exposure history, and tutor voice metadata, create 3-5 planned posts with landing hypotheses.
+Given a content brief, learner concept state, recent exposure history, and tutor voice metadata, create 3-5 post intents with landing hypotheses.
 ```
 
-The first CLI may insert plans with `status=planned`, but each plan should be publishable by design. The point is not “maybe someday”; the point is “we believe this should land because…”
+The first CLI may insert intents with `status=planned`, but each intent should be publishable by design. The point is not “maybe someday”; the point is “we believe this should land because…”
 
 **Verification:**
 
 ```bash
-DATABASE_URL=... npm run content:plan
+DATABASE_URL=... npm run content:intent
 ```
 
 Expected output:
 
 ```text
-Created 5 agentic post plans for brief <id>.
+Created 5 agentic post intents for brief <id>.
 ```
 
 ---
@@ -497,7 +497,7 @@ Created 5 agentic post plans for brief <id>.
 
 **Documentation points:**
 
-- Agentic posting creates planned posts from landing hypotheses, not speculative candidate piles.
+- Agentic posting creates post intents from landing hypotheses, not speculative candidate piles.
 - Content briefs guide research and tutor voice.
 - Learner concept state informs curation.
 - Feed pacing optimizes for seen posts, not infinite inventory.
@@ -516,7 +516,7 @@ git diff -- docs/product-roadmap.md docs/persistence.md docs/agentic-posting.md
 Start with these three in order:
 
 1. **Learner concept state** — gives the system taste about what the learner knows.
-2. **Planned agentic posts** — gives every generated post a reason it should land.
+2. **Agentic post intents** — gives every generated post a reason it should land.
 3. **Feed pacing simulator** — makes “no more than 20% unseen” a real constraint.
 
 Do not start with a beautiful admin UI. The architecture needs a brain before it needs a dashboard.
