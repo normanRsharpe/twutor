@@ -10,6 +10,24 @@ Open the latest prototype directly:
 sketches/006-openai-avatar-feed/index.html
 ```
 
+## Running locally
+
+```bash
+npm start
+```
+
+The server listens on `PORT` or `3000` and redirects `/` to the latest prototype.
+
+## Railway deployment
+
+This repo is ready for Railway using Nixpacks:
+
+- build: detected from `package.json`
+- start command: `npm start`
+- runtime port: Railway provides `PORT`
+
+Deploy from GitHub by creating a Railway project from `normanRsharpe/twutor`.
+
 Earlier explorations:
 
 - `sketches/001-feed-as-classroom/` — warm editorial feed

@@ -1,0 +1,13 @@
+{
+  "name": "twutor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A Twitter/X-inspired social learning feed for platform engineering and AI engineering.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "PORT=3000 node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
