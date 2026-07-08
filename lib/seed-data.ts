@@ -3,6 +3,7 @@ import type {
   challenges,
   diagramNodes,
   generatedAssets,
+  learnerConceptStates,
   learners,
   pollOptions,
   postMetrics,
@@ -23,6 +24,7 @@ export type SeedRows = {
   learners: (typeof learners.$inferInsert)[];
   tutors: (typeof tutorTable.$inferInsert)[];
   generatedAssets: (typeof generatedAssets.$inferInsert)[];
+  conceptStates: (typeof learnerConceptStates.$inferInsert)[];
   follows: (typeof tutorFollows.$inferInsert)[];
   savedPosts: (typeof learnerSavedPosts.$inferInsert)[];
   learningStates: (typeof learnerLearningStates.$inferInsert)[];
@@ -165,6 +167,53 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
       url: tutor.avatarUrl,
       metadata: { style: "dark social app portrait", source: "Hermes image_generate" }
     })),
+    conceptStates: [
+      {
+        learnerId: demoLearnerId,
+        conceptSlug: "agent-workflows",
+        label: "Agent workflows",
+        familiarity: "unknown" as const,
+        confidence: 12,
+        evidence: "No saved posts or challenge activity yet",
+        nextAction: "introduce"
+      },
+      {
+        learnerId: demoLearnerId,
+        conceptSlug: "rag-citations",
+        label: "RAG citations",
+        familiarity: "seen" as const,
+        confidence: 32,
+        evidence: "Seen retrieval-first post but has not saved or revisited citation mechanics",
+        nextAction: "reinforce"
+      },
+      {
+        learnerId: demoLearnerId,
+        conceptSlug: "ai-observability",
+        label: "AI observability",
+        familiarity: "familiar" as const,
+        confidence: 64,
+        evidence: "Multiple feed exposures around traces and eval samples",
+        nextAction: "apply"
+      },
+      {
+        learnerId: demoLearnerId,
+        conceptSlug: "model-gateways",
+        label: "Model gateways",
+        familiarity: "confident" as const,
+        confidence: 86,
+        evidence: "Saved model gateway post and follows platform tutor",
+        nextAction: "extend"
+      },
+      {
+        learnerId: demoLearnerId,
+        conceptSlug: "vector-databases",
+        label: "Vector databases",
+        familiarity: "stale" as const,
+        confidence: 48,
+        evidence: "Previously saved RAG material but has not revisited retrieval tradeoffs recently",
+        nextAction: "revisit"
+      }
+    ],
     follows: ["eval", "maya"].map((tutorId) => ({ learnerId: demoLearnerId, tutorId })),
     savedPosts: ["evals-after-bug", "model-gateway"].map((postId) => ({ learnerId: demoLearnerId, postId })),
     learningStates: [

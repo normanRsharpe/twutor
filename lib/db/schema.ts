@@ -12,6 +12,7 @@ import {
 
 export const postKindEnum = pgEnum("post_kind", ["text", "diagram", "quote", "poll", "trace", "challenge"]);
 export const assetOwnerEnum = pgEnum("asset_owner", ["tutor", "post", "challenge"]);
+export const conceptFamiliarityEnum = pgEnum("concept_familiarity", ["unknown", "seen", "familiar", "confident", "stale"]);
 
 export const learners = pgTable("learners", {
   id: text("id").primaryKey(),
@@ -69,6 +70,21 @@ export const learnerLearningStates = pgTable("learner_learning_states", {
   lastSignal: text("last_signal").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
+
+export const learnerConceptStates = pgTable(
+  "learner_concept_states",
+  {
+    learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+    conceptSlug: text("concept_slug").notNull(),
+    label: text("label").notNull(),
+    familiarity: conceptFamiliarityEnum("familiarity").notNull(),
+    confidence: integer("confidence").notNull(),
+    evidence: text("evidence").notNull(),
+    nextAction: text("next_action").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => ({ pk: primaryKey({ columns: [table.learnerId, table.conceptSlug] }) })
+);
 
 export const generatedAssets = pgTable("generated_assets", {
   id: text("id").primaryKey(),
