@@ -15,6 +15,13 @@
       "when": 1783525716163,
       "tag": "0001_blushing_steve_rogers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783527378441,
+      "tag": "0002_majestic_mole_man",
+      "breakpoints": true
     }
   ]
 }

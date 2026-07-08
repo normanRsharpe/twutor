@@ -3,7 +3,7 @@
 import { Brain, Search, SendHorizonal, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { toggleTutorFollow } from "@/app/actions";
+import { togglePostSaved, toggleTutorFollow } from "@/app/actions";
 import {
   actionIcons,
   composerTools,
@@ -16,7 +16,7 @@ import {
 } from "@/data/twutor";
 import type { FeedData, TutorView } from "@/lib/feed-queries";
 
-export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedData: FeedData; selectedTutorId?: TutorId; mode?: "feed" | "tutors" }) {
+export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedData: FeedData; selectedTutorId?: TutorId; mode?: "feed" | "tutors" | "saved" }) {
   const [toast, setToast] = useState<string | null>(null);
 
   function cue(message: string) {
@@ -30,7 +30,7 @@ export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedDa
     <div className="mx-auto grid min-h-screen max-w-[1420px] grid-cols-1 bg-black text-[#e7e9ea] lg:grid-cols-[286px_minmax(520px,640px)_380px]">
       <LeftNav onCue={cue} />
       <main className="min-h-screen border-x border-tw-border lg:border-l-0">
-        {mode === "tutors" ? <DirectoryTopBar /> : selectedTutor ? <TutorHero tutor={selectedTutor} /> : <TopBar activeFeed={feedData.activeFeed} />}
+        {mode === "tutors" ? <DirectoryTopBar /> : selectedTutor ? <TutorHero tutor={selectedTutor} /> : <TopBar activeFeed={feedData.activeFeed} mode={mode} />}
         {mode === "tutors" ? (
           <TutorDirectory tutors={feedData.tutors} />
         ) : (
@@ -46,7 +46,7 @@ export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedDa
               {feedData.posts.length ? (
                 feedData.posts.map((post) => <PostCard key={post.id} post={post} tutors={feedData.tutors} />)
               ) : (
-                <div className="border-b border-tw-border px-6 py-12 text-center text-tw-muted">Follow a tutor to start shaping this feed.</div>
+                <div className="border-b border-tw-border px-6 py-12 text-center text-tw-muted">{feedData.activeFeed === "saved" ? "Saved posts will collect here when you tap bookmark." : "Follow a tutor to start shaping this feed."}</div>
               )}
             </section>
           </>
@@ -65,7 +65,7 @@ function LeftNav({ onCue }: { onCue: (message: string) => void }) {
       <a href="/" className="mb-4 text-[34px] font-black tracking-[-0.08em]">twut<span className="text-tw-blue">or</span></a>
       <nav className="space-y-1" aria-label="Primary">
         {navItems.filter((item) => item.label !== "Build Lab" && item.label !== "Progress").map((item) => {
-          const href = item.label === "Home" ? "/" : item.label === "Tutors" ? "/tutors" : "#";
+          const href = item.label === "Home" ? "/" : item.label === "Tutors" ? "/tutors" : item.label === "Saved Models" ? "/saved" : "#";
           return (
             <a
               key={item.label}
@@ -100,16 +100,17 @@ function LeftNav({ onCue }: { onCue: (message: string) => void }) {
   );
 }
 
-function TopBar({ activeFeed }: { activeFeed: "for-you" | "following" }) {
+function TopBar({ activeFeed, mode }: { activeFeed: "for-you" | "following" | "saved"; mode: "feed" | "tutors" | "saved" }) {
   const tabs = [
-    { label: "For You", href: "/", active: activeFeed === "for-you" },
-    { label: "Following", href: "/?feed=following", active: activeFeed === "following" }
+    { label: "For You", href: "/", active: activeFeed === "for-you" && mode !== "saved" },
+    { label: "Following", href: "/?feed=following", active: activeFeed === "following" },
+    { label: "Saved", href: "/saved", active: activeFeed === "saved" || mode === "saved" }
   ];
 
   return (
     <header className="sticky top-0 z-20 border-b border-tw-border bg-black/80 backdrop-blur-xl">
       <h1 className="px-4 pb-2 pt-3 text-xl font-black">Home</h1>
-      <div className="grid grid-cols-2 text-center font-extrabold text-tw-muted">
+      <div className="grid grid-cols-3 text-center font-extrabold text-tw-muted">
         {tabs.map((tab) => (
           <a key={tab.label} href={tab.href} className={`relative py-4 ${tab.active ? "text-[#e7e9ea]" : ""}`}>
             {tab.label}
@@ -329,7 +330,13 @@ function Actions({ post }: { post: Post }) {
       <span className={item}><Repost className="h-5 w-5" />{post.metrics.reposts}</span>
       <span className={`${item} text-emerald-500`}><CheckIcon className="h-5 w-5" />{post.metrics.checks}</span>
       <span className={item}><Views className="h-5 w-5" />{post.metrics.views}</span>
-      <span className={item}><Bookmark className="h-5 w-5" /></span>
+      <form action={togglePostSaved}>
+        <input type="hidden" name="postId" value={post.id} />
+        <input type="hidden" name="saved" value={String(!post.isSaved)} />
+        <button className={`${item} ${post.isSaved ? "text-tw-blue" : ""}`} aria-label={post.isSaved ? "Unsave post" : "Save post"}>
+          <Bookmark className={`h-5 w-5 ${post.isSaved ? "fill-tw-blue" : ""}`} />
+        </button>
+      </form>
     </div>
   );
 }

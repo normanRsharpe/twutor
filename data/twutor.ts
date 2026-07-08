@@ -62,6 +62,7 @@ export type Post = {
     body: string;
     cta: string;
   };
+  isSaved?: boolean;
 };
 
 export type NavItem = {

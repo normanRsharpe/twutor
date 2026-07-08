@@ -50,6 +50,16 @@ export const tutorFollows = pgTable(
   (table) => ({ pk: primaryKey({ columns: [table.learnerId, table.tutorId] }) })
 );
 
+export const learnerSavedPosts = pgTable(
+  "learner_saved_posts",
+  {
+    learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+    postId: text("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => ({ pk: primaryKey({ columns: [table.learnerId, table.postId] }) })
+);
+
 export const generatedAssets = pgTable("generated_assets", {
   id: text("id").primaryKey(),
   ownerType: assetOwnerEnum("owner_type").notNull(),

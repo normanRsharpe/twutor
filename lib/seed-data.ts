@@ -10,6 +10,7 @@ import type {
   quotePosts,
   traceCards,
   tutorFollows,
+  learnerSavedPosts,
   tutors as tutorTable
 } from "@/lib/db/schema";
 
@@ -22,6 +23,7 @@ export type SeedRows = {
   tutors: (typeof tutorTable.$inferInsert)[];
   generatedAssets: (typeof generatedAssets.$inferInsert)[];
   follows: (typeof tutorFollows.$inferInsert)[];
+  savedPosts: (typeof learnerSavedPosts.$inferInsert)[];
   posts: (typeof postTable.$inferInsert)[];
   postMetrics: (typeof postMetrics.$inferInsert)[];
   diagramNodes: (typeof diagramNodes.$inferInsert)[];
@@ -162,6 +164,7 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
       metadata: { style: "dark social app portrait", source: "Hermes image_generate" }
     })),
     follows: ["eval", "maya"].map((tutorId) => ({ learnerId: demoLearnerId, tutorId })),
+    savedPosts: ["evals-after-bug", "model-gateway"].map((postId) => ({ learnerId: demoLearnerId, postId })),
     posts: posts.map((post, index) => ({
       id: post.id,
       tutorId: post.tutorId,

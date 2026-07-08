@@ -6,6 +6,7 @@ import {
   challenges,
   diagramNodes,
   generatedAssets,
+  learnerSavedPosts,
   pollOptions,
   postMetrics,
   posts,
@@ -16,7 +17,7 @@ import {
 } from "@/lib/db/schema";
 import { buildSeedRows, demoLearnerId, type SeedRows } from "@/lib/seed-data";
 
-export type FeedKind = "for-you" | "following";
+export type FeedKind = "for-you" | "following" | "saved";
 
 export type TutorView = Tutor & {
   bio: string;
@@ -64,11 +65,12 @@ export function getLatestPostByTutor(feedPosts: Pick<Post, "tutorId" | "body">[]
 }
 
 export function filterPostsForFeed(feedPosts: FeedPost[], feed: FeedKind, followedTutorIds: Set<TutorId>) {
-  if (feed !== "following") return feedPosts;
-  return feedPosts.filter((post) => followedTutorIds.has(post.tutorId));
+  if (feed === "following") return feedPosts.filter((post) => followedTutorIds.has(post.tutorId));
+  if (feed === "saved") return feedPosts.filter((post) => post.isSaved);
+  return feedPosts;
 }
 
-export function assembleFeedPosts(rows: Pick<SeedRows, "posts" | "postMetrics" | "diagramNodes" | "quotePosts" | "pollOptions" | "traceCards" | "challenges">): FeedPost[] {
+export function assembleFeedPosts(rows: Pick<SeedRows, "posts" | "postMetrics" | "diagramNodes" | "quotePosts" | "pollOptions" | "traceCards" | "challenges">, savedPostIds = new Set<string>()): FeedPost[] {
   const metricsByPost = new Map(rows.postMetrics.map((metric) => [metric.postId, metric]));
   const quoteByPost = new Map(rows.quotePosts.map((quote) => [quote.postId, quote]));
   const traceByPost = new Map(rows.traceCards.map((trace) => [trace.postId, trace]));
@@ -99,6 +101,7 @@ export function assembleFeedPosts(rows: Pick<SeedRows, "posts" | "postMetrics" |
           checks: metrics.checks,
           views: metrics.views
         },
+        isSaved: savedPostIds.has(post.id),
         ...(diagramRows?.length
           ? { diagram: { nodes: diagramRows.map((node) => node.label), caption: diagramRows[0].caption } }
           : {}),
@@ -163,7 +166,7 @@ function fallbackFeedData({ tutorId, feed = "for-you" }: { tutorId?: string; fee
   const seed = buildSeedRows({ tutors: seedTutors, posts: seedPosts });
   const tutorViews = assembleTutorViews(seed.tutors, seed.follows, seed.generatedAssets, seed.posts);
   const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
-  const feedPosts = assembleFeedPosts(seed);
+  const feedPosts = assembleFeedPosts(seed, new Set(seed.savedPosts.map((saved) => saved.postId)));
   const visiblePosts = filterPostsForFeed(feedPosts, feed, followed).filter((post) => !tutorId || post.tutorId === tutorId);
 
   return {
@@ -178,9 +181,10 @@ export async function getFeedData({ tutorId, feed = "for-you" }: { tutorId?: str
   if (!getDatabaseUrl()) return fallbackFeedData({ tutorId, feed });
 
   const db = getDb();
-  const [tutorRows, followRows, assetRows, postRows, metricRows, diagramRows, quoteRows, pollRows, traceRows, challengeRows] = await Promise.all([
+  const [tutorRows, followRows, savedRows, assetRows, postRows, metricRows, diagramRows, quoteRows, pollRows, traceRows, challengeRows] = await Promise.all([
     db.select().from(tutors).orderBy(asc(tutors.name)),
     db.select().from(tutorFollows).where(eq(tutorFollows.learnerId, demoLearnerId)),
+    db.select().from(learnerSavedPosts).where(eq(learnerSavedPosts.learnerId, demoLearnerId)),
     db.select().from(generatedAssets).where(eq(generatedAssets.ownerType, "tutor")),
     tutorId
       ? db.select().from(posts).where(eq(posts.tutorId, tutorId)).orderBy(asc(posts.sortOrder))
@@ -209,7 +213,7 @@ export async function getFeedData({ tutorId, feed = "for-you" }: { tutorId?: str
 
   return {
     tutors: tutorViews,
-    posts: filterPostsForFeed(assembleFeedPosts(seedLike), feed, followed),
+    posts: filterPostsForFeed(assembleFeedPosts(seedLike, new Set(savedRows.map((saved) => saved.postId))), feed, followed),
     tutorsToFollow: (Object.keys(tutorViews) as TutorId[]).filter((id) => !tutorViews[id].isFollowed).slice(0, 2),
     activeFeed: feed
   };
@@ -233,5 +237,15 @@ export async function setTutorFollow(tutorId: string, follow: boolean) {
     await db.insert(tutorFollows).values({ learnerId: demoLearnerId, tutorId }).onConflictDoNothing();
   } else {
     await db.delete(tutorFollows).where(and(eq(tutorFollows.learnerId, demoLearnerId), eq(tutorFollows.tutorId, tutorId)));
+  }
+}
+
+export async function setPostSaved(postId: string, saved: boolean) {
+  if (!getDatabaseUrl()) return;
+  const db = getDb();
+  if (saved) {
+    await db.insert(learnerSavedPosts).values({ learnerId: demoLearnerId, postId }).onConflictDoNothing();
+  } else {
+    await db.delete(learnerSavedPosts).where(and(eq(learnerSavedPosts.learnerId, demoLearnerId), eq(learnerSavedPosts.postId, postId)));
   }
 }
