@@ -1,22 +1,22 @@
 "use client";
 
 import { Brain, Search, SendHorizonal } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState } from "react";
+import { toggleTutorFollow } from "@/app/actions";
 import {
   actionIcons,
   composerTools,
   learner,
   navItems,
-  posts,
   trendingConfusions,
-  tutors,
-  tutorsToFollow,
   type PollOption,
   type Post,
   type TutorId
 } from "@/data/twutor";
+import type { FeedData, TutorView } from "@/lib/feed-queries";
 
-export function TwutorApp() {
+export function TwutorApp({ feedData, selectedTutorId }: { feedData: FeedData; selectedTutorId?: TutorId }) {
   const [toast, setToast] = useState<string | null>(null);
 
   function cue(message: string) {
@@ -24,25 +24,27 @@ export function TwutorApp() {
     window.setTimeout(() => setToast(null), 1800);
   }
 
+  const selectedTutor = selectedTutorId ? feedData.tutors[selectedTutorId] : null;
+
   return (
     <div className="mx-auto grid min-h-screen max-w-[1420px] grid-cols-1 bg-black text-[#e7e9ea] lg:grid-cols-[286px_minmax(520px,640px)_380px]">
       <LeftNav onCue={cue} />
       <main className="min-h-screen border-x border-tw-border lg:border-l-0">
-        <TopBar />
+        {selectedTutor ? <TutorHero tutor={selectedTutor} /> : <TopBar />}
         <Composer onCue={cue} />
         <button
           className="w-full border-b border-tw-border py-3 text-center text-tw-blue transition hover:bg-tw-blue/10"
-          onClick={() => cue("Loaded 3 fresh tutor arguments")}
+          onClick={() => cue(selectedTutor ? `Filtered to ${selectedTutor.name}` : "Loaded 3 fresh tutor arguments")}
         >
-          Show 3 new tutor posts
+          {selectedTutor ? `Showing ${selectedTutor.name}'s teaching feed` : "Show 3 new tutor posts"}
         </button>
         <section aria-label="Tutor feed">
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
+          {feedData.posts.map((post) => (
+            <PostCard key={post.id} post={post} tutors={feedData.tutors} />
           ))}
         </section>
       </main>
-      <RightRail />
+      <RightRail tutors={feedData.tutors} tutorsToFollow={feedData.tutorsToFollow} />
       <FloatingActions />
       {toast ? <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#e7e9ea] px-4 py-2 text-sm font-extrabold text-black shadow-2xl">{toast}</div> : null}
     </div>
@@ -52,7 +54,7 @@ export function TwutorApp() {
 function LeftNav({ onCue }: { onCue: (message: string) => void }) {
   return (
     <aside className="sticky top-0 hidden h-screen flex-col gap-3 border-r border-tw-border px-6 py-5 lg:flex">
-      <div className="mb-4 text-[34px] font-black tracking-[-0.08em]">twut<span className="text-tw-blue">or</span></div>
+      <a href="/" className="mb-4 text-[34px] font-black tracking-[-0.08em]">twut<span className="text-tw-blue">or</span></a>
       <nav className="space-y-1" aria-label="Primary">
         {navItems.map((item) => (
           <button
@@ -100,6 +102,35 @@ function TopBar() {
   );
 }
 
+function TutorHero({ tutor }: { tutor: TutorView }) {
+  return (
+    <header className="border-b border-tw-border bg-black">
+      <div className="px-4 pb-3 pt-3">
+        <a href="/" className="text-sm font-bold text-tw-blue">← Home</a>
+        <h1 className="mt-1 text-xl font-black">{tutor.name}</h1>
+        <div className="text-sm text-tw-muted">{tutor.handle}</div>
+      </div>
+      <div className="h-28 bg-gradient-to-r from-sky-950 via-slate-900 to-emerald-950" />
+      <div className="px-4 pb-5">
+        <div className="flex items-end justify-between">
+          <img src={tutor.avatar} alt={`${tutor.name} avatar`} className="-mt-14 h-28 w-28 rounded-full border-4 border-black object-cover" />
+          <FollowForm tutor={tutor} />
+        </div>
+        <h2 className="mt-3 text-2xl font-black">{tutor.name}</h2>
+        <div className="text-tw-muted">{tutor.handle}</div>
+        <p className="mt-3 leading-snug text-white">{tutor.bio}</p>
+        <div className="mt-3 text-sm font-bold text-slate-300">Teaching angle: {tutor.angle}</div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {tutor.specialtyTags.map((tag) => <span key={tag} className="rounded-full border border-tw-border px-3 py-1 text-sm font-bold text-tw-muted">{tag}</span>)}
+        </div>
+        {tutor.generatedAvatar ? (
+          <div className="mt-3 text-xs text-tw-muted">Avatar: {tutor.generatedAvatar.provider} / {tutor.generatedAvatar.model ?? "unknown model"}</div>
+        ) : null}
+      </div>
+    </header>
+  );
+}
+
 function Composer({ onCue }: { onCue: (message: string) => void }) {
   return (
     <section className="grid grid-cols-[48px_1fr] gap-4 border-b border-tw-border px-4 py-5">
@@ -117,23 +148,23 @@ function Composer({ onCue }: { onCue: (message: string) => void }) {
   );
 }
 
-function PostCard({ post }: { post: Post }) {
+function PostCard({ post, tutors }: { post: Post; tutors: Record<TutorId, TutorView> }) {
   const tutor = tutors[post.tutorId];
   const Verified = actionIcons.verified;
 
   return (
     <article className="grid grid-cols-[48px_1fr] gap-4 border-b border-tw-border px-4 py-4">
-      <img src={tutor.avatar} alt={`${tutor.name} avatar`} className="h-12 w-12 rounded-full object-cover" />
+      <a href={`/tutors/${tutor.id}`}><img src={tutor.avatar} alt={`${tutor.name} avatar`} className="h-12 w-12 rounded-full object-cover" /></a>
       <div className="min-w-0">
         <div className="flex items-center gap-1.5 text-[15px]">
-          <span className="font-black text-white">{tutor.name}</span>
+          <a href={`/tutors/${tutor.id}`} className="font-black text-white hover:underline">{tutor.name}</a>
           <Verified className="h-4 w-4 fill-tw-blue text-black" />
           <span className="truncate text-tw-muted">{tutor.handle} · {post.time}</span>
           <span className="ml-auto text-tw-muted">•••</span>
         </div>
         <p className="mt-1 whitespace-pre-line text-[16px] leading-snug text-white">{post.body}</p>
         {post.diagram ? <Diagram nodes={post.diagram.nodes} caption={post.diagram.caption} /> : null}
-        {post.quote ? <QuoteCard quote={post.quote} /> : null}
+        {post.quote ? <QuoteCard quote={post.quote} tutors={tutors} /> : null}
         {post.poll ? <Poll options={post.poll} /> : null}
         {post.trace ? <Trace data={post.trace} /> : null}
         {post.challenge ? <Challenge {...post.challenge} /> : null}
@@ -159,7 +190,7 @@ function Diagram({ nodes, caption }: { nodes: string[]; caption: string }) {
   );
 }
 
-function QuoteCard({ quote }: { quote: NonNullable<Post["quote"]> }) {
+function QuoteCard({ quote, tutors }: { quote: NonNullable<Post["quote"]>; tutors: Record<TutorId, TutorView> }) {
   const tutor = tutors[quote.tutorId];
   return (
     <div className="mt-3 rounded-2xl border border-tw-border p-3">
@@ -223,7 +254,7 @@ function Actions({ post }: { post: Post }) {
   );
 }
 
-function RightRail() {
+function RightRail({ tutors, tutorsToFollow }: { tutors: Record<TutorId, TutorView>; tutorsToFollow: TutorId[] }) {
   return (
     <aside className="sticky top-0 hidden h-screen overflow-y-auto px-6 py-4 lg:block no-scrollbar">
       <label className="mb-4 flex h-12 items-center gap-3 rounded-full border border-tw-border bg-black px-4 text-tw-muted">
@@ -244,13 +275,13 @@ function RightRail() {
         ))}
       </RailCard>
       <RailCard title="Tutors to follow" tight>
-        {tutorsToFollow.map((id) => <FollowTutor key={id} id={id} />)}
+        {tutorsToFollow.map((id) => <FollowTutor key={id} tutor={tutors[id]} />)}
       </RailCard>
     </aside>
   );
 }
 
-function RailCard({ title, children, tight = false }: { title: string; children: React.ReactNode; tight?: boolean }) {
+function RailCard({ title, children, tight = false }: { title: string; children: ReactNode; tight?: boolean }) {
   return (
     <section className={`mb-4 overflow-hidden rounded-3xl border border-tw-border ${tight ? "" : "p-4"}`}>
       <h2 className={`text-xl font-black ${tight ? "p-4" : "mb-4"}`}>{title}</h2>
@@ -259,17 +290,28 @@ function RailCard({ title, children, tight = false }: { title: string; children:
   );
 }
 
-function FollowTutor({ id }: { id: TutorId }) {
-  const tutor = tutors[id];
+function FollowTutor({ tutor }: { tutor: TutorView }) {
   return (
     <div className="flex items-center gap-3 border-t border-tw-border px-4 py-3">
-      <img src={tutor.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
+      <a href={`/tutors/${tutor.id}`}><img src={tutor.avatar} alt="" className="h-10 w-10 rounded-full object-cover" /></a>
       <div className="min-w-0 flex-1">
-        <div className="truncate font-black">{tutor.name}</div>
+        <a href={`/tutors/${tutor.id}`} className="block truncate font-black hover:underline">{tutor.name}</a>
         <div className="truncate text-sm text-tw-muted">{tutor.handle}</div>
       </div>
-      <button className="rounded-full bg-white px-4 py-1.5 text-sm font-black text-black">Follow</button>
+      <FollowForm tutor={tutor} compact />
     </div>
+  );
+}
+
+function FollowForm({ tutor, compact = false }: { tutor: TutorView; compact?: boolean }) {
+  return (
+    <form action={toggleTutorFollow}>
+      <input type="hidden" name="tutorId" value={tutor.id} />
+      <input type="hidden" name="follow" value={String(!tutor.isFollowed)} />
+      <button className={`${compact ? "px-4 py-1.5 text-sm" : "px-5 py-2"} rounded-full ${tutor.isFollowed ? "border border-tw-border bg-black text-white" : "bg-white text-black"} font-black`}>
+        {tutor.isFollowed ? "Following" : "Follow"}
+      </button>
+    </form>
   );
 }
 

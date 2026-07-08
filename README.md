@@ -94,6 +94,10 @@ Twutor should feel like a living expert feed, not a static course dashboard:
 
 See [`docs/product-roadmap.md`](docs/product-roadmap.md) for the real-app feature roadmap.
 
+## Persistence
+
+See [`docs/persistence.md`](docs/persistence.md) for the Railway Postgres + Drizzle schema, migrations, seed, DB-backed feed, tutor profiles, and follow model.
+
 ## Next milestone
 
-See [`docs/next-milestone.md`](docs/next-milestone.md) for the Railway Postgres + Drizzle plan.
+See [`docs/next-milestone.md`](docs/next-milestone.md) for the original Railway Postgres + Drizzle plan.
