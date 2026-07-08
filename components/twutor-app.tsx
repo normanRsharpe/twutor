@@ -38,9 +38,9 @@ export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedDa
             <Composer onCue={cue} />
             <button
               className="w-full border-b border-tw-border py-3 text-center text-tw-blue transition hover:bg-tw-blue/10"
-              onClick={() => cue(selectedTutor ? `Filtered to ${selectedTutor.name}` : feedData.activeFeed === "following" ? "Following feed refreshed" : "Loaded 3 fresh tutor arguments")}
+              onClick={() => cue(selectedTutor ? `Filtered to ${selectedTutor.name}` : feedData.activeFeed === "saved" ? "Saved posts refreshed" : feedData.activeFeed === "following" ? "Following feed refreshed" : "Loaded 3 fresh tutor arguments")}
             >
-              {selectedTutor ? `Showing ${selectedTutor.name}'s teaching feed` : feedData.activeFeed === "following" ? "Showing posts from tutors you follow" : "Show 3 new tutor posts"}
+              {selectedTutor ? `Showing ${selectedTutor.name}'s teaching feed` : feedData.activeFeed === "saved" ? "Showing posts you saved" : feedData.activeFeed === "following" ? "Showing posts from tutors you follow" : "Show 3 new tutor posts"}
             </button>
             <section aria-label="Tutor feed">
               {feedData.posts.length ? (
@@ -109,7 +109,7 @@ function TopBar({ activeFeed, mode }: { activeFeed: "for-you" | "following" | "s
 
   return (
     <header className="sticky top-0 z-20 border-b border-tw-border bg-black/80 backdrop-blur-xl">
-      <h1 className="px-4 pb-2 pt-3 text-xl font-black">Home</h1>
+      <h1 className="px-4 pb-2 pt-3 text-xl font-black">{activeFeed === "saved" ? "Saved Models" : "Home"}</h1>
       <div className="grid grid-cols-3 text-center font-extrabold text-tw-muted">
         {tabs.map((tab) => (
           <a key={tab.label} href={tab.href} className={`relative py-4 ${tab.active ? "text-[#e7e9ea]" : ""}`}>
