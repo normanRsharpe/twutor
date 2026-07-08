@@ -60,6 +60,16 @@ export const learnerSavedPosts = pgTable(
   (table) => ({ pk: primaryKey({ columns: [table.learnerId, table.postId] }) })
 );
 
+export const learnerLearningStates = pgTable("learner_learning_states", {
+  learnerId: text("learner_id").primaryKey().references(() => learners.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  currentArc: text("current_arc").notNull(),
+  progressPercent: integer("progress_percent").notNull(),
+  focusTopics: text("focus_topics").array().notNull(),
+  lastSignal: text("last_signal").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
 export const generatedAssets = pgTable("generated_assets", {
   id: text("id").primaryKey(),
   ownerType: assetOwnerEnum("owner_type").notNull(),

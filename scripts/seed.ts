@@ -6,6 +6,7 @@ import {
   challenges,
   diagramNodes,
   generatedAssets,
+  learnerLearningStates,
   learnerSavedPosts,
   learners,
   pollOptions,
@@ -51,10 +52,12 @@ async function main() {
     }
 
     for (const learnerId of learnerIds) {
+      await tx.delete(learnerLearningStates).where(eq(learnerLearningStates.learnerId, learnerId));
       await tx.delete(learners).where(eq(learners.id, learnerId));
     }
 
     await tx.insert(learners).values(seed.learners);
+    await tx.insert(learnerLearningStates).values(seed.learningStates);
     await tx.insert(tutorTable).values(seed.tutors);
     await tx.insert(generatedAssets).values(seed.generatedAssets);
     await tx.insert(tutorFollows).values(seed.follows);
@@ -69,7 +72,7 @@ async function main() {
     if (seed.challenges.length) await tx.insert(challenges).values(seed.challenges);
   });
 
-  console.log(`Seeded ${seed.tutors.length} tutors, ${seed.posts.length} posts, ${seed.follows.length} follows, ${seed.savedPosts.length} saved posts.`);
+  console.log(`Seeded ${seed.tutors.length} tutors, ${seed.posts.length} posts, ${seed.follows.length} follows, ${seed.savedPosts.length} saved posts, ${seed.learningStates.length} learning states.`);
 }
 
 main()

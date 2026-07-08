@@ -11,6 +11,7 @@ import type {
   traceCards,
   tutorFollows,
   learnerSavedPosts,
+  learnerLearningStates,
   tutors as tutorTable
 } from "@/lib/db/schema";
 
@@ -24,6 +25,7 @@ export type SeedRows = {
   generatedAssets: (typeof generatedAssets.$inferInsert)[];
   follows: (typeof tutorFollows.$inferInsert)[];
   savedPosts: (typeof learnerSavedPosts.$inferInsert)[];
+  learningStates: (typeof learnerLearningStates.$inferInsert)[];
   posts: (typeof postTable.$inferInsert)[];
   postMetrics: (typeof postMetrics.$inferInsert)[];
   diagramNodes: (typeof diagramNodes.$inferInsert)[];
@@ -165,6 +167,16 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
     })),
     follows: ["eval", "maya"].map((tutorId) => ({ learnerId: demoLearnerId, tutorId })),
     savedPosts: ["evals-after-bug", "model-gateway"].map((postId) => ({ learnerId: demoLearnerId, postId })),
+    learningStates: [
+      {
+        learnerId: demoLearnerId,
+        title: "Platform × AI Engineering",
+        currentArc: "AI systems as platform problems",
+        progressPercent: 42,
+        focusTopics: ["model gateways", "evals", "AI observability"],
+        lastSignal: "Saved model gateway + eval release gates"
+      }
+    ],
     posts: posts.map((post, index) => ({
       id: post.id,
       tutorId: post.tutorId,

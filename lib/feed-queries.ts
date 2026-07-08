@@ -6,6 +6,7 @@ import {
   challenges,
   diagramNodes,
   generatedAssets,
+  learnerLearningStates,
   learnerSavedPosts,
   pollOptions,
   postMetrics,
@@ -42,11 +43,21 @@ export type TutorView = Tutor & {
 
 export type FeedPost = Post;
 
+export type LearningArc = {
+  title: string;
+  currentArc: string;
+  progressPercent: number;
+  savedPostCount: number;
+  focusTopics: string[];
+  lastSignal: string;
+};
+
 export type FeedData = {
   tutors: Record<TutorId, TutorView>;
   posts: FeedPost[];
   tutorsToFollow: TutorId[];
   activeFeed: FeedKind;
+  learningArc: LearningArc;
 };
 
 function byPostId<T extends { postId: string }>(rows: T[]) {
@@ -68,6 +79,17 @@ export function filterPostsForFeed(feedPosts: FeedPost[], feed: FeedKind, follow
   if (feed === "following") return feedPosts.filter((post) => followedTutorIds.has(post.tutorId));
   if (feed === "saved") return feedPosts.filter((post) => post.isSaved);
   return feedPosts;
+}
+
+export function assembleLearningArc(state: SeedRows["learningStates"][number] | undefined, savedPostCount: number): LearningArc {
+  return {
+    title: state?.title ?? "Platform × AI Engineering",
+    currentArc: state?.currentArc ?? "AI systems as platform problems",
+    progressPercent: state?.progressPercent ?? 0,
+    savedPostCount,
+    focusTopics: state?.focusTopics ?? [],
+    lastSignal: state?.lastSignal ?? "No signal yet"
+  };
 }
 
 export function assembleFeedPosts(rows: Pick<SeedRows, "posts" | "postMetrics" | "diagramNodes" | "quotePosts" | "pollOptions" | "traceCards" | "challenges">, savedPostIds = new Set<string>()): FeedPost[] {
@@ -173,7 +195,8 @@ function fallbackFeedData({ tutorId, feed = "for-you" }: { tutorId?: string; fee
     tutors: tutorViews,
     posts: visiblePosts,
     tutorsToFollow: (Object.keys(tutorViews) as TutorId[]).filter((id) => !tutorViews[id].isFollowed).slice(0, 2),
-    activeFeed: feed
+    activeFeed: feed,
+    learningArc: assembleLearningArc(seed.learningStates[0], seed.savedPosts.length)
   };
 }
 
@@ -181,10 +204,11 @@ export async function getFeedData({ tutorId, feed = "for-you" }: { tutorId?: str
   if (!getDatabaseUrl()) return fallbackFeedData({ tutorId, feed });
 
   const db = getDb();
-  const [tutorRows, followRows, savedRows, assetRows, postRows, metricRows, diagramRows, quoteRows, pollRows, traceRows, challengeRows] = await Promise.all([
+  const [tutorRows, followRows, savedRows, learningStateRows, assetRows, postRows, metricRows, diagramRows, quoteRows, pollRows, traceRows, challengeRows] = await Promise.all([
     db.select().from(tutors).orderBy(asc(tutors.name)),
     db.select().from(tutorFollows).where(eq(tutorFollows.learnerId, demoLearnerId)),
     db.select().from(learnerSavedPosts).where(eq(learnerSavedPosts.learnerId, demoLearnerId)),
+    db.select().from(learnerLearningStates).where(eq(learnerLearningStates.learnerId, demoLearnerId)),
     db.select().from(generatedAssets).where(eq(generatedAssets.ownerType, "tutor")),
     tutorId
       ? db.select().from(posts).where(eq(posts.tutorId, tutorId)).orderBy(asc(posts.sortOrder))
@@ -215,7 +239,8 @@ export async function getFeedData({ tutorId, feed = "for-you" }: { tutorId?: str
     tutors: tutorViews,
     posts: filterPostsForFeed(assembleFeedPosts(seedLike, new Set(savedRows.map((saved) => saved.postId))), feed, followed),
     tutorsToFollow: (Object.keys(tutorViews) as TutorId[]).filter((id) => !tutorViews[id].isFollowed).slice(0, 2),
-    activeFeed: feed
+    activeFeed: feed,
+    learningArc: assembleLearningArc(learningStateRows[0], savedRows.length)
   };
 }
 

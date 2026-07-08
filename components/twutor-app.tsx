@@ -14,7 +14,7 @@ import {
   type Post,
   type TutorId
 } from "@/data/twutor";
-import type { FeedData, TutorView } from "@/lib/feed-queries";
+import type { FeedData, LearningArc, TutorView } from "@/lib/feed-queries";
 
 export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedData: FeedData; selectedTutorId?: TutorId; mode?: "feed" | "tutors" | "saved" }) {
   const [toast, setToast] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedDa
           </>
         )}
       </main>
-      <RightRail tutors={feedData.tutors} tutorsToFollow={feedData.tutorsToFollow} />
+      <RightRail tutors={feedData.tutors} tutorsToFollow={feedData.tutorsToFollow} learningArc={feedData.learningArc} />
       <FloatingActions />
       {toast ? <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#e7e9ea] px-4 py-2 text-sm font-extrabold text-black shadow-2xl">{toast}</div> : null}
     </div>
@@ -341,7 +341,7 @@ function Actions({ post }: { post: Post }) {
   );
 }
 
-function RightRail({ tutors, tutorsToFollow }: { tutors: Record<TutorId, TutorView>; tutorsToFollow: TutorId[] }) {
+function RightRail({ tutors, tutorsToFollow, learningArc }: { tutors: Record<TutorId, TutorView>; tutorsToFollow: TutorId[]; learningArc: LearningArc }) {
   return (
     <aside className="sticky top-0 hidden h-screen overflow-y-auto px-6 py-4 lg:block no-scrollbar">
       <label className="mb-4 flex h-12 items-center gap-3 rounded-full border border-tw-border bg-black px-4 text-tw-muted">
@@ -349,9 +349,15 @@ function RightRail({ tutors, tutorsToFollow }: { tutors: Record<TutorId, TutorVi
         <input className="w-full bg-transparent outline-none" placeholder="Search Twutor" />
       </label>
       <RailCard title="Your learning arc">
-        <div className="h-2 rounded-full bg-[#24282d]"><div className="h-2 w-[42%] rounded-full bg-gradient-to-r from-tw-blue to-emerald-500" /></div>
-        <div className="mt-7 font-black">Platform × AI Engineering</div>
-        <div className="mt-1 text-sm text-tw-muted">42% through “AI systems as platform problems.”</div>
+        <div className="h-2 rounded-full bg-[#24282d]"><div className="h-2 rounded-full bg-gradient-to-r from-tw-blue to-emerald-500" style={{ width: `${learningArc.progressPercent}%` }} /></div>
+        <div className="mt-7 font-black">{learningArc.title}</div>
+        <div className="mt-1 text-sm text-tw-muted">{learningArc.progressPercent}% through “{learningArc.currentArc}.”</div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {learningArc.focusTopics.map((topic) => <span key={topic} className="rounded-full border border-tw-border px-2.5 py-1 text-xs font-bold text-slate-300">{topic}</span>)}
+        </div>
+        <div className="mt-3 rounded-2xl bg-white/[0.04] p-3 text-xs leading-snug text-tw-muted">
+          <span className="font-black text-slate-200">{learningArc.savedPostCount} saved</span> · {learningArc.lastSignal}
+        </div>
       </RailCard>
       <RailCard title="Trending confusions" tight>
         {trendingConfusions.map(([count, title], index) => (
