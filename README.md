@@ -90,6 +90,10 @@ Twutor should feel like a living expert feed, not a static course dashboard:
 - trending confusions
 - personalized learning arcs
 
+## Product roadmap
+
+See [`docs/product-roadmap.md`](docs/product-roadmap.md) for the real-app feature roadmap.
+
 ## Next milestone
 
 See [`docs/next-milestone.md`](docs/next-milestone.md) for the Railway Postgres + Drizzle plan.
