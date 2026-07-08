@@ -29,6 +29,13 @@ export const tutors = pgTable("tutors", {
   bio: text("bio").notNull(),
   angle: text("angle").notNull(),
   specialtyTags: text("specialty_tags").array().notNull(),
+  profileHeadline: text("profile_headline").notNull(),
+  teachingStyle: text("teaching_style").notNull(),
+  bestFor: text("best_for").notNull(),
+  accentColor: text("accent_color").notNull(),
+  pinnedPostId: text("pinned_post_id"),
+  voicePrinciples: text("voice_principles").array().notNull(),
+  preferredPostFormats: text("preferred_post_formats").array().notNull(),
   isVerified: boolean("is_verified").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });

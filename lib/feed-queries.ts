@@ -16,9 +16,19 @@ import {
 } from "@/lib/db/schema";
 import { buildSeedRows, demoLearnerId, type SeedRows } from "@/lib/seed-data";
 
+export type FeedKind = "for-you" | "following";
+
 export type TutorView = Tutor & {
   bio: string;
   specialtyTags: string[];
+  profileHeadline: string;
+  teachingStyle: string;
+  bestFor: string;
+  accentColor: string;
+  pinnedPostId: string | null;
+  voicePrinciples: string[];
+  preferredPostFormats: string[];
+  latestPostPreview?: string;
   isVerified: boolean;
   isFollowed: boolean;
   generatedAvatar?: {
@@ -35,6 +45,7 @@ export type FeedData = {
   tutors: Record<TutorId, TutorView>;
   posts: FeedPost[];
   tutorsToFollow: TutorId[];
+  activeFeed: FeedKind;
 };
 
 function byPostId<T extends { postId: string }>(rows: T[]) {
@@ -43,6 +54,18 @@ function byPostId<T extends { postId: string }>(rows: T[]) {
     acc[row.postId].push(row);
     return acc;
   }, {});
+}
+
+export function getLatestPostByTutor(feedPosts: Pick<Post, "tutorId" | "body">[]) {
+  return feedPosts.reduce<Partial<Record<TutorId, Pick<Post, "body">>>>((acc, post) => {
+    acc[post.tutorId] ??= post;
+    return acc;
+  }, {});
+}
+
+export function filterPostsForFeed(feedPosts: FeedPost[], feed: FeedKind, followedTutorIds: Set<TutorId>) {
+  if (feed !== "following") return feedPosts;
+  return feedPosts.filter((post) => followedTutorIds.has(post.tutorId));
 }
 
 export function assembleFeedPosts(rows: Pick<SeedRows, "posts" | "postMetrics" | "diagramNodes" | "quotePosts" | "pollOptions" | "traceCards" | "challenges">): FeedPost[] {
@@ -87,13 +110,26 @@ export function assembleFeedPosts(rows: Pick<SeedRows, "posts" | "postMetrics" |
     });
 }
 
-function fallbackFeedData(tutorId?: string): FeedData {
-  const seed = buildSeedRows({ tutors: seedTutors, posts: seedPosts });
-  const followed = new Set(seed.follows.map((follow) => follow.tutorId));
-  const assets = new Map(seed.generatedAssets.map((asset) => [asset.ownerId, asset]));
-  const tutorViews = Object.fromEntries(
-    seed.tutors.map((tutor) => {
+export function assembleTutorViews(
+  tutorRows: SeedRows["tutors"],
+  followRows: SeedRows["follows"],
+  assetRows: SeedRows["generatedAssets"],
+  postRows: Pick<SeedRows["posts"][number], "tutorId" | "body" | "sortOrder">[]
+): Record<TutorId, TutorView> {
+  const followed = new Set(followRows.map((follow) => follow.tutorId));
+  const assets = new Map(assetRows.map((asset) => [asset.ownerId, asset]));
+  const defaultTutors = new Map(buildSeedRows({ tutors: seedTutors, posts: seedPosts }).tutors.map((tutor) => [tutor.id, tutor]));
+  const latestByTutor = [...postRows]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .reduce<Record<string, string>>((acc, post) => {
+      acc[post.tutorId] ??= post.body;
+      return acc;
+    }, {});
+
+  return Object.fromEntries(
+    tutorRows.map((tutor) => {
       const asset = assets.get(tutor.id);
+      const fallback = defaultTutors.get(tutor.id);
       return [
         tutor.id,
         {
@@ -104,6 +140,14 @@ function fallbackFeedData(tutorId?: string): FeedData {
           angle: tutor.angle,
           bio: tutor.bio,
           specialtyTags: tutor.specialtyTags,
+          profileHeadline: tutor.profileHeadline || fallback?.profileHeadline || tutor.angle,
+          teachingStyle: tutor.teachingStyle || fallback?.teachingStyle || "Opinionated, practical, feed-native.",
+          bestFor: tutor.bestFor || fallback?.bestFor || tutor.bio,
+          accentColor: tutor.accentColor || fallback?.accentColor || "#38bdf8",
+          pinnedPostId: tutor.pinnedPostId || fallback?.pinnedPostId || null,
+          voicePrinciples: tutor.voicePrinciples.length ? tutor.voicePrinciples : fallback?.voicePrinciples ?? [],
+          preferredPostFormats: tutor.preferredPostFormats.length ? tutor.preferredPostFormats : fallback?.preferredPostFormats ?? [],
+          latestPostPreview: latestByTutor[tutor.id],
           isVerified: tutor.isVerified ?? true,
           isFollowed: followed.has(tutor.id),
           generatedAvatar: asset
@@ -113,17 +157,25 @@ function fallbackFeedData(tutorId?: string): FeedData {
       ];
     })
   ) as Record<TutorId, TutorView>;
+}
 
-  const feedPosts = assembleFeedPosts(seed).filter((post) => !tutorId || post.tutorId === tutorId);
+function fallbackFeedData({ tutorId, feed = "for-you" }: { tutorId?: string; feed?: FeedKind }): FeedData {
+  const seed = buildSeedRows({ tutors: seedTutors, posts: seedPosts });
+  const tutorViews = assembleTutorViews(seed.tutors, seed.follows, seed.generatedAssets, seed.posts);
+  const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
+  const feedPosts = assembleFeedPosts(seed);
+  const visiblePosts = filterPostsForFeed(feedPosts, feed, followed).filter((post) => !tutorId || post.tutorId === tutorId);
+
   return {
     tutors: tutorViews,
-    posts: feedPosts,
-    tutorsToFollow: (Object.keys(tutorViews) as TutorId[]).filter((id) => !tutorViews[id].isFollowed).slice(0, 2)
+    posts: visiblePosts,
+    tutorsToFollow: (Object.keys(tutorViews) as TutorId[]).filter((id) => !tutorViews[id].isFollowed).slice(0, 2),
+    activeFeed: feed
   };
 }
 
-export async function getFeedData({ tutorId }: { tutorId?: string } = {}): Promise<FeedData> {
-  if (!getDatabaseUrl()) return fallbackFeedData(tutorId);
+export async function getFeedData({ tutorId, feed = "for-you" }: { tutorId?: string; feed?: FeedKind } = {}): Promise<FeedData> {
+  if (!getDatabaseUrl()) return fallbackFeedData({ tutorId, feed });
 
   const db = getDb();
   const [tutorRows, followRows, assetRows, postRows, metricRows, diagramRows, quoteRows, pollRows, traceRows, challengeRows] = await Promise.all([
@@ -152,35 +204,14 @@ export async function getFeedData({ tutorId }: { tutorId?: string } = {}): Promi
     challenges: challengeRows.filter((row) => visiblePostIds.has(row.postId))
   };
 
-  const followed = new Set(followRows.map((follow) => follow.tutorId));
-  const assets = new Map(assetRows.map((asset) => [asset.ownerId, asset]));
-  const tutorViews = Object.fromEntries(
-    tutorRows.map((tutor) => {
-      const asset = assets.get(tutor.id);
-      return [
-        tutor.id,
-        {
-          id: tutor.id as TutorId,
-          name: tutor.name,
-          handle: tutor.handle,
-          avatar: tutor.avatarUrl,
-          angle: tutor.angle,
-          bio: tutor.bio,
-          specialtyTags: tutor.specialtyTags,
-          isVerified: tutor.isVerified,
-          isFollowed: followed.has(tutor.id),
-          generatedAvatar: asset
-            ? { provider: asset.provider, model: asset.model, prompt: asset.prompt, url: asset.url }
-            : undefined
-        }
-      ];
-    })
-  ) as Record<TutorId, TutorView>;
+  const tutorViews = assembleTutorViews(tutorRows, followRows, assetRows, postRows);
+  const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
 
   return {
     tutors: tutorViews,
-    posts: assembleFeedPosts(seedLike),
-    tutorsToFollow: (Object.keys(tutorViews) as TutorId[]).filter((id) => !tutorViews[id].isFollowed).slice(0, 2)
+    posts: filterPostsForFeed(assembleFeedPosts(seedLike), feed, followed),
+    tutorsToFollow: (Object.keys(tutorViews) as TutorId[]).filter((id) => !tutorViews[id].isFollowed).slice(0, 2),
+    activeFeed: feed
   };
 }
 

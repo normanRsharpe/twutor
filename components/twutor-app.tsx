@@ -1,6 +1,6 @@
 "use client";
 
-import { Brain, Search, SendHorizonal } from "lucide-react";
+import { Brain, Search, SendHorizonal, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { toggleTutorFollow } from "@/app/actions";
@@ -16,7 +16,7 @@ import {
 } from "@/data/twutor";
 import type { FeedData, TutorView } from "@/lib/feed-queries";
 
-export function TwutorApp({ feedData, selectedTutorId }: { feedData: FeedData; selectedTutorId?: TutorId }) {
+export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedData: FeedData; selectedTutorId?: TutorId; mode?: "feed" | "tutors" }) {
   const [toast, setToast] = useState<string | null>(null);
 
   function cue(message: string) {
@@ -30,19 +30,27 @@ export function TwutorApp({ feedData, selectedTutorId }: { feedData: FeedData; s
     <div className="mx-auto grid min-h-screen max-w-[1420px] grid-cols-1 bg-black text-[#e7e9ea] lg:grid-cols-[286px_minmax(520px,640px)_380px]">
       <LeftNav onCue={cue} />
       <main className="min-h-screen border-x border-tw-border lg:border-l-0">
-        {selectedTutor ? <TutorHero tutor={selectedTutor} /> : <TopBar />}
-        <Composer onCue={cue} />
-        <button
-          className="w-full border-b border-tw-border py-3 text-center text-tw-blue transition hover:bg-tw-blue/10"
-          onClick={() => cue(selectedTutor ? `Filtered to ${selectedTutor.name}` : "Loaded 3 fresh tutor arguments")}
-        >
-          {selectedTutor ? `Showing ${selectedTutor.name}'s teaching feed` : "Show 3 new tutor posts"}
-        </button>
-        <section aria-label="Tutor feed">
-          {feedData.posts.map((post) => (
-            <PostCard key={post.id} post={post} tutors={feedData.tutors} />
-          ))}
-        </section>
+        {mode === "tutors" ? <DirectoryTopBar /> : selectedTutor ? <TutorHero tutor={selectedTutor} /> : <TopBar activeFeed={feedData.activeFeed} />}
+        {mode === "tutors" ? (
+          <TutorDirectory tutors={feedData.tutors} />
+        ) : (
+          <>
+            <Composer onCue={cue} />
+            <button
+              className="w-full border-b border-tw-border py-3 text-center text-tw-blue transition hover:bg-tw-blue/10"
+              onClick={() => cue(selectedTutor ? `Filtered to ${selectedTutor.name}` : feedData.activeFeed === "following" ? "Following feed refreshed" : "Loaded 3 fresh tutor arguments")}
+            >
+              {selectedTutor ? `Showing ${selectedTutor.name}'s teaching feed` : feedData.activeFeed === "following" ? "Showing posts from tutors you follow" : "Show 3 new tutor posts"}
+            </button>
+            <section aria-label="Tutor feed">
+              {feedData.posts.length ? (
+                feedData.posts.map((post) => <PostCard key={post.id} post={post} tutors={feedData.tutors} />)
+              ) : (
+                <div className="border-b border-tw-border px-6 py-12 text-center text-tw-muted">Follow a tutor to start shaping this feed.</div>
+              )}
+            </section>
+          </>
+        )}
       </main>
       <RightRail tutors={feedData.tutors} tutorsToFollow={feedData.tutorsToFollow} />
       <FloatingActions />
@@ -56,18 +64,28 @@ function LeftNav({ onCue }: { onCue: (message: string) => void }) {
     <aside className="sticky top-0 hidden h-screen flex-col gap-3 border-r border-tw-border px-6 py-5 lg:flex">
       <a href="/" className="mb-4 text-[34px] font-black tracking-[-0.08em]">twut<span className="text-tw-blue">or</span></a>
       <nav className="space-y-1" aria-label="Primary">
-        {navItems.map((item) => (
-          <button
-            key={item.label}
-            className={`flex w-max items-center gap-5 rounded-full px-3.5 py-3 text-[21px] transition hover:bg-white/10 ${item.active ? "font-black" : "font-bold"}`}
-          >
-            <span className="relative">
-              <item.icon className="h-7 w-7" strokeWidth={2.3} />
-              {item.badge ? <span className="absolute -right-2 -top-2 rounded-full bg-tw-blue px-1.5 text-xs font-black text-white">{item.badge}</span> : null}
-            </span>
-            {item.label}
-          </button>
-        ))}
+        {navItems.filter((item) => item.label !== "Build Lab" && item.label !== "Progress").map((item) => {
+          const href = item.label === "Home" ? "/" : item.label === "Tutors" ? "/tutors" : "#";
+          return (
+            <a
+              key={item.label}
+              href={href}
+              onClick={(event) => {
+                if (href === "#") {
+                  event.preventDefault();
+                  onCue(`${item.label} is queued for a later Twutor slice`);
+                }
+              }}
+              className={`flex w-max items-center gap-5 rounded-full px-3.5 py-3 text-[21px] transition hover:bg-white/10 ${item.active ? "font-black" : "font-bold"}`}
+            >
+              <span className="relative">
+                <item.icon className="h-7 w-7" strokeWidth={2.3} />
+                {item.badge ? <span className="absolute -right-2 -top-2 rounded-full bg-tw-blue px-1.5 text-xs font-black text-white">{item.badge}</span> : null}
+              </span>
+              {item.label}
+            </a>
+          );
+        })}
       </nav>
       <button className="mt-2 h-[54px] w-[220px] rounded-full bg-tw-blue text-lg font-black text-white transition hover:bg-sky-400" onClick={() => onCue("Tutor council is listening")}>Ask Tutors</button>
       <div className="mt-auto flex items-center gap-3 rounded-full p-2 transition hover:bg-white/10">
@@ -82,23 +100,68 @@ function LeftNav({ onCue }: { onCue: (message: string) => void }) {
   );
 }
 
-function TopBar() {
+function TopBar({ activeFeed }: { activeFeed: "for-you" | "following" }) {
+  const tabs = [
+    { label: "For You", href: "/", active: activeFeed === "for-you" },
+    { label: "Following", href: "/?feed=following", active: activeFeed === "following" }
+  ];
+
   return (
     <header className="sticky top-0 z-20 border-b border-tw-border bg-black/80 backdrop-blur-xl">
       <h1 className="px-4 pb-2 pt-3 text-xl font-black">Home</h1>
-      <div className="grid grid-cols-3 text-center font-extrabold text-tw-muted">
-        {[
-          ["For You", true],
-          ["Following", false],
-          ["Build Mode", false]
-        ].map(([label, active]) => (
-          <div key={String(label)} className={`relative py-4 ${active ? "text-[#e7e9ea]" : ""}`}>
-            {label}
-            {active ? <span className="absolute bottom-0 left-[32%] right-[32%] h-1 rounded-full bg-tw-blue" /> : null}
-          </div>
+      <div className="grid grid-cols-2 text-center font-extrabold text-tw-muted">
+        {tabs.map((tab) => (
+          <a key={tab.label} href={tab.href} className={`relative py-4 ${tab.active ? "text-[#e7e9ea]" : ""}`}>
+            {tab.label}
+            {tab.active ? <span className="absolute bottom-0 left-[32%] right-[32%] h-1 rounded-full bg-tw-blue" /> : null}
+          </a>
         ))}
       </div>
     </header>
+  );
+}
+
+function DirectoryTopBar() {
+  return (
+    <header className="sticky top-0 z-20 border-b border-tw-border bg-black/80 px-4 py-4 backdrop-blur-xl">
+      <div className="text-sm font-bold text-tw-muted">Tutor directory</div>
+      <h1 className="mt-1 text-2xl font-black tracking-tight">Follow the voices you want in your feed</h1>
+      <p className="mt-2 text-sm leading-snug text-tw-muted">Each tutor is a recurring lens on platform and AI engineering — not a generic lesson bucket.</p>
+    </header>
+  );
+}
+
+function TutorDirectory({ tutors }: { tutors: Record<TutorId, TutorView> }) {
+  return (
+    <section aria-label="Tutor directory" className="divide-y divide-tw-border">
+      {(Object.values(tutors) as TutorView[]).map((tutor) => (
+        <article key={tutor.id} className="px-4 py-5 transition hover:bg-white/[0.03]">
+          <div className="flex gap-4">
+            <a href={`/tutors/${tutor.id}`}>
+              <img src={tutor.avatar} alt={`${tutor.name} avatar`} className="h-16 w-16 rounded-full object-cover" />
+            </a>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <a href={`/tutors/${tutor.id}`} className="text-lg font-black text-white hover:underline">{tutor.name}</a>
+                  <div className="text-sm text-tw-muted">{tutor.handle}</div>
+                </div>
+                <FollowForm tutor={tutor} compact />
+              </div>
+              <p className="mt-2 text-[17px] font-extrabold leading-snug text-white">{tutor.profileHeadline}</p>
+              <p className="mt-1 leading-snug text-tw-muted">{tutor.bestFor}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {tutor.specialtyTags.map((tag) => <span key={tag} className="rounded-full border border-tw-border px-3 py-1 text-xs font-black text-slate-300">{tag}</span>)}
+              </div>
+              <div className="mt-3 rounded-2xl border border-tw-border bg-white/[0.03] p-3">
+                <div className="mb-1 flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-tw-muted"><Sparkles className="h-4 w-4" /> Latest signal</div>
+                <p className="text-sm leading-snug text-slate-200">{tutor.latestPostPreview}</p>
+              </div>
+            </div>
+          </div>
+        </article>
+      ))}
+    </section>
   );
 }
 
@@ -118,8 +181,18 @@ function TutorHero({ tutor }: { tutor: TutorView }) {
         </div>
         <h2 className="mt-3 text-2xl font-black">{tutor.name}</h2>
         <div className="text-tw-muted">{tutor.handle}</div>
-        <p className="mt-3 leading-snug text-white">{tutor.bio}</p>
-        <div className="mt-3 text-sm font-bold text-slate-300">Teaching angle: {tutor.angle}</div>
+        <p className="mt-3 text-xl font-black leading-tight text-white">{tutor.profileHeadline}</p>
+        <p className="mt-2 leading-snug text-slate-200">{tutor.bio}</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <ProfileFact label="Best for" value={tutor.bestFor} />
+          <ProfileFact label="Teaching style" value={tutor.teachingStyle} />
+        </div>
+        <div className="mt-4 rounded-2xl border border-tw-border bg-white/[0.03] p-4">
+          <div className="text-xs font-black uppercase tracking-[0.14em] text-tw-muted">Voice principles</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {tutor.voicePrinciples.map((principle) => <span key={principle} className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-slate-200">{principle}</span>)}
+          </div>
+        </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {tutor.specialtyTags.map((tag) => <span key={tag} className="rounded-full border border-tw-border px-3 py-1 text-sm font-bold text-tw-muted">{tag}</span>)}
         </div>
@@ -128,6 +201,15 @@ function TutorHero({ tutor }: { tutor: TutorView }) {
         ) : null}
       </div>
     </header>
+  );
+}
+
+function ProfileFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-tw-border bg-white/[0.03] p-4">
+      <div className="text-xs font-black uppercase tracking-[0.14em] text-tw-muted">{label}</div>
+      <div className="mt-2 text-sm font-bold leading-snug text-slate-200">{value}</div>
+    </div>
   );
 }
 
@@ -239,7 +321,6 @@ function Actions({ post }: { post: Post }) {
   const CheckIcon = actionIcons.check;
   const Views = actionIcons.views;
   const Bookmark = actionIcons.bookmark;
-  const Build = actionIcons.build;
   const item = "flex items-center gap-1.5 text-sm text-tw-muted";
 
   return (
@@ -249,7 +330,6 @@ function Actions({ post }: { post: Post }) {
       <span className={`${item} text-emerald-500`}><CheckIcon className="h-5 w-5" />{post.metrics.checks}</span>
       <span className={item}><Views className="h-5 w-5" />{post.metrics.views}</span>
       <span className={item}><Bookmark className="h-5 w-5" /></span>
-      <span className={item}><Build className="h-5 w-5" />Build</span>
     </div>
   );
 }

@@ -31,36 +31,92 @@ export type SeedRows = {
   challenges: (typeof challenges.$inferInsert)[];
 };
 
-const tutorDetails: Record<TutorId, { bio: string; specialtyTags: string[]; avatarPrompt: string }> = {
+const tutorDetails: Record<
+  TutorId,
+  {
+    bio: string;
+    specialtyTags: string[];
+    avatarPrompt: string;
+    profileHeadline: string;
+    teachingStyle: string;
+    bestFor: string;
+    accentColor: string;
+    pinnedPostId: string;
+    voicePrinciples: string[];
+    preferredPostFormats: string[];
+  }
+> = {
   eval: {
     bio: "Ships eval systems that turn embarrassing AI failures into boring regression gates.",
     specialtyTags: ["evals", "regression gates", "release confidence"],
-    avatarPrompt: "Editorial profile portrait for Dr. Eval Singh, AI evals tutor, dark social app aesthetic."
+    avatarPrompt: "Editorial profile portrait for Dr. Eval Singh, AI evals tutor, dark social app aesthetic.",
+    profileHeadline: "Evals are CI/CD for AI systems.",
+    teachingStyle: "Sharp, skeptical, test-first.",
+    bestFor: "Turning vague AI quality worries into concrete release gates.",
+    accentColor: "#38bdf8",
+    pinnedPostId: "evals-after-bug",
+    voicePrinciples: ["Prefer tiny eval suites over vibe checks", "Translate quality anxiety into release gates", "Treat failures as regression fixtures"],
+    preferredPostFormats: ["hot take", "release gate teardown", "tiny eval recipe"]
   },
   maya: {
     bio: "Builds golden paths for teams turning AI experiments into reliable internal platforms.",
     specialtyTags: ["platform APIs", "golden paths", "developer experience"],
-    avatarPrompt: "Editorial profile portrait for Maya Chen, platform engineering tutor, orange work jacket, infrastructure blueprint background."
+    avatarPrompt: "Editorial profile portrait for Maya Chen, platform engineering tutor, orange work jacket, infrastructure blueprint background.",
+    profileHeadline: "The model gateway is the new paved road.",
+    teachingStyle: "Pragmatic, systems-minded, developer-experience obsessed.",
+    bestFor: "Seeing where AI chaos wants a boring internal platform.",
+    accentColor: "#fb923c",
+    pinnedPostId: "model-gateway",
+    voicePrinciples: ["Make cross-cutting concerns visible", "Prefer paved roads over platform theater", "Explain abstractions through team friction"],
+    preferredPostFormats: ["architecture diagram", "platform hot take", "golden path critique"]
   },
   nora: {
     bio: "Explains RAG, context quality, citations, and knowledge systems without vector-database theater.",
     specialtyTags: ["RAG", "citations", "knowledge systems"],
-    avatarPrompt: "Editorial profile portrait for Nora Context, RAG tutor, green vector search and document chunk motif."
+    avatarPrompt: "Editorial profile portrait for Nora Context, RAG tutor, green vector search and document chunk motif.",
+    profileHeadline: "Context quality beats agent complexity.",
+    teachingStyle: "Calm, precise, citation-first.",
+    bestFor: "Untangling retrieval, chunking, citations, and knowledge-system tradeoffs.",
+    accentColor: "#34d399",
+    pinnedPostId: "retrieval-first",
+    voicePrinciples: ["Start with the question the system must answer", "Demand citations before autonomy", "Separate retrieval quality from prompt luck"],
+    preferredPostFormats: ["quote-post correction", "retrieval checklist", "citation critique"]
   },
   sam: {
     bio: "Treats every AI system as hostile until policy, sandboxing, and observability prove otherwise.",
     specialtyTags: ["security", "policy", "guardrails"],
-    avatarPrompt: "Editorial profile portrait for Sam Guardrail, security tutor, red-team lighting, shield and lock motifs."
+    avatarPrompt: "Editorial profile portrait for Sam Guardrail, security tutor, red-team lighting, shield and lock motifs.",
+    profileHeadline: "Trust nothing until the policy layer says why.",
+    teachingStyle: "Adversarial, concise, failure-mode driven.",
+    bestFor: "Spotting prompt injection, tool-risk, permissions, and governance gaps.",
+    accentColor: "#f43f5e",
+    pinnedPostId: "rag-poll",
+    voicePrinciples: ["Assume the model is a confused deputy", "Name the permission boundary", "Make safe behavior observable"],
+    preferredPostFormats: ["poll", "red-team prompt", "guardrail teardown"]
   },
   iris: {
     bio: "Turns traces, logs, eval samples, and tool calls into explanations humans can trust.",
     specialtyTags: ["observability", "OpenTelemetry", "AI traces"],
-    avatarPrompt: "Editorial profile portrait for Iris Trace, observability tutor, blue violet trace lines and terminal glow."
+    avatarPrompt: "Editorial profile portrait for Iris Trace, observability tutor, blue violet trace lines and terminal glow.",
+    profileHeadline: "If you cannot trace it, you cannot trust it.",
+    teachingStyle: "Visual, forensic, evidence-led.",
+    bestFor: "Debugging AI systems through traces, spans, tool calls, and eval samples.",
+    accentColor: "#818cf8",
+    pinnedPostId: "ai-trace",
+    voicePrinciples: ["Show the request path", "Connect traces to decisions", "Prefer evidence over confidence scores"],
+    preferredPostFormats: ["trace card", "debug thread", "observability diagram"]
   },
   theo: {
     bio: "Prices the dream: inference latency, GPU spend, routing choices, and runtime tradeoffs.",
     specialtyTags: ["inference", "cost", "runtime"],
-    avatarPrompt: "Editorial profile portrait for Theo Runtime, inference infrastructure tutor, GPU racks and amber cost chart lighting."
+    avatarPrompt: "Editorial profile portrait for Theo Runtime, inference infrastructure tutor, GPU racks and amber cost chart lighting.",
+    profileHeadline: "Every AI architecture eventually gets a bill.",
+    teachingStyle: "Economic, blunt, tradeoff-heavy.",
+    bestFor: "Understanding inference cost, latency, routing, GPUs, and runtime constraints.",
+    accentColor: "#f59e0b",
+    pinnedPostId: "gateway-challenge",
+    voicePrinciples: ["Put price and latency beside every design", "Separate prototype speed from production economics", "Explain runtime choices as tradeoffs"],
+    preferredPostFormats: ["cost breakdown", "runtime tradeoff", "architecture challenge"]
   }
 };
 
@@ -82,6 +138,13 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
     bio: tutorDetails[tutor.id].bio,
     angle: tutor.angle,
     specialtyTags: tutorDetails[tutor.id].specialtyTags,
+    profileHeadline: tutorDetails[tutor.id].profileHeadline,
+    teachingStyle: tutorDetails[tutor.id].teachingStyle,
+    bestFor: tutorDetails[tutor.id].bestFor,
+    accentColor: tutorDetails[tutor.id].accentColor,
+    pinnedPostId: tutorDetails[tutor.id].pinnedPostId,
+    voicePrinciples: tutorDetails[tutor.id].voicePrinciples,
+    preferredPostFormats: tutorDetails[tutor.id].preferredPostFormats,
     isVerified: true
   }));
 
