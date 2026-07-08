@@ -2,46 +2,80 @@
 
 A Twitter/X-inspired social learning feed for curated tutoring around platform engineering and AI engineering.
 
-## Current sketches
+## Current app
 
-Open the latest prototype directly:
+Twutor is now a Next.js app. The main route renders the componentized feed:
 
 ```text
-sketches/006-openai-avatar-feed/index.html
+/
+```
+
+The previous static prototype is preserved for compatibility:
+
+```text
+/sketches/006-openai-avatar-feed/index.html
 ```
 
 ## Running locally
 
+Use a modern Node runtime. On this machine the Homebrew Node binary is preferred:
+
 ```bash
-npm start
+PATH=/opt/homebrew/bin:$PATH npm install
+PATH=/opt/homebrew/bin:$PATH npm run dev
 ```
 
-The server listens on `PORT` or `3000` and redirects `/` to the latest prototype.
+Production-style local run:
+
+```bash
+PATH=/opt/homebrew/bin:$PATH npm run build
+PATH=/opt/homebrew/bin:$PATH PORT=3000 npm start
+```
+
+## Verification
+
+```bash
+PATH=/opt/homebrew/bin:$PATH npm run typecheck
+PATH=/opt/homebrew/bin:$PATH npm run build
+PATH=/opt/homebrew/bin:$PATH npm audit --omit=dev
+```
 
 ## Railway deployment
 
 This repo is ready for Railway using Nixpacks:
 
-- build: detected from `package.json`
+- build command: `npm run build`
 - start command: `npm start`
 - runtime port: Railway provides `PORT`
+- Node engine: `>=20 <27`
 
-Deploy from GitHub by creating a Railway project from `normanRsharpe/twutor`.
+Deploy from GitHub by creating a Railway project from `normanRsharpe/twutor`, or use the Railway CLI from this repo.
+
+## App structure
+
+```text
+app/                 Next.js app router
+components/          React UI components for the feed shell
+components/twutor-app.tsx
+data/twutor.ts       Typed seed data for tutors, posts, polls, traces, challenges
+public/assets/       Runtime-served avatar/icon assets
+public/sketches/     Legacy static prototypes
+```
 
 Earlier explorations:
 
-- `sketches/001-feed-as-classroom/` — warm editorial feed
-- `sketches/002-tutor-council/` — tutor personas debating ideas
-- `sketches/003-signal-stream/` — clean learning dashboard/feed hybrid
-- `sketches/004-tutor-feed-dark/` — dark X-like social learning feed
-- `sketches/005-tutor-feed-icons-avatars/` — Lucide icons + local SVG avatars
-- `sketches/006-openai-avatar-feed/` — Lucide icons + OpenAI-generated tutor avatars
+- `public/sketches/001-feed-as-classroom/` — warm editorial feed
+- `public/sketches/002-tutor-council/` — tutor personas debating ideas
+- `public/sketches/003-signal-stream/` — clean learning dashboard/feed hybrid
+- `public/sketches/004-tutor-feed-dark/` — dark X-like social learning feed
+- `public/sketches/005-tutor-feed-icons-avatars/` — Lucide icons + local SVG avatars
+- `public/sketches/006-openai-avatar-feed/` — Lucide icons + OpenAI-generated tutor avatars
 
 ## Assets
 
-- `assets/vendor/lucide.min.js` — vendored Lucide icon library
-- `assets/avatars/` — interim SVG avatar assets
-- `assets/avatars/openai/` — OpenAI-generated tutor profile images
+- `public/assets/vendor/lucide.min.js` — vendored Lucide icon library for legacy prototypes
+- `public/assets/avatars/` — interim SVG avatar assets
+- `public/assets/avatars/openai/` — OpenAI-generated tutor profile images
 
 ## Product direction
 
@@ -55,3 +89,7 @@ Twutor should feel like a living expert feed, not a static course dashboard:
 - build challenges
 - trending confusions
 - personalized learning arcs
+
+## Next milestone
+
+See [`docs/next-milestone.md`](docs/next-milestone.md) for the Railway Postgres + Drizzle plan.

@@ -1,3 +1,21 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+tsconfig.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
 
 # Beads / Dolt files (added by bd init)
 .dolt/

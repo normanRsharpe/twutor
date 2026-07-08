@@ -1,13 +1,32 @@
 {
   "name": "twutor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "A Twitter/X-inspired social learning feed for platform engineering and AI engineering.",
   "scripts": {
-    "start": "node server.js",
-    "dev": "PORT=3000 node server.js"
+    "dev": "next dev -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "next": "^16.2.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20 <27"
+  },
+  "overrides": {
+    "postcss": "^8.5.16"
   }
 }
