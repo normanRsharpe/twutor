@@ -4,7 +4,7 @@
 
 **Goal:** Build the first architecture for agentic posting: research-backed tutor content generation, learner-aware curation, and feed pacing that keeps Twutor engaging without flooding the learner.
 
-**Architecture:** Add a thin content-ops layer on top of the existing Drizzle/Postgres feed. New tables model learner knowledge signals, generated post candidates, source/research notes, recommendation decisions, and exposure/read state. Generation stays semi-manual at first: agents draft posts into a review queue, the app publishes only reviewed posts, and a simulator tunes what appears in the feed so no more than ~20% of posts are expected to go unseen.
+**Architecture:** Add a thin content-ops layer on top of the existing Drizzle/Postgres feed. New tables model learner knowledge signals, source/research notes, posting hypotheses, recommendation decisions, and exposure/read state. Agents should not spray candidate drafts into a holding pen; they should decide which posts are likely to land for this learner, publish from a clear learning/engagement hypothesis, and then learn from whether the post was actually seen, saved, revisited, or ignored.
 
 **Tech Stack:** Next.js 16 app router, React 19, Drizzle ORM, Railway Postgres, Vitest, existing tutor/persona/feed model.
 
@@ -17,7 +17,7 @@ Twutor should not become an infinite lesson dump. Agentic posting should feel li
 The new loop:
 
 ```text
-learner signals → content strategy brief → agent research → tutor post candidates → review/publish → feed pacing → exposure/read signals → next brief
+learner signals → content strategy brief → agent research → landing hypothesis → publish planned tutor posts → feed pacing → exposure/read signals → next brief
 ```
 
 Three non-negotiables:
@@ -41,7 +41,7 @@ Existing foundation:
 Important constraint:
 
 - Keep the near-term product feed-native. Do not drift into a traditional course/challenge app.
-- Generated content can be vague at first, but the architecture should anticipate serious research, learner modeling, review, and recommendation.
+- Generated content can be rough at first, but the architecture should anticipate serious research, learner modeling, landing hypotheses, and recommendation. The system should create posts it believes should exist, not a pile of speculative candidates.
 
 ---
 
@@ -104,27 +104,29 @@ research_notes
 
 Why: agents should gather and compress complexity before writing feed posts.
 
-### Generated post candidates
+### Planned agentic posts
 
 ```text
-generated_post_candidates
+agentic_post_plans
   id
   brief_id
   tutor_id
   kind
   body
   attachment_payload jsonb
-  rationale
+  landing_hypothesis
+  expected_learner_effect: introduce | deepen | revisit | confidence_boost | provoke_question
   voice_notes
-  status: draft | review | approved | rejected | published
-  quality_score
+  status: planned | published | retired
+  expected_seen_probability
+  expected_save_probability
+  actual_post_id
   risk_notes
   created_at
-  reviewed_at
-  published_post_id
+  published_at
 ```
 
-Why: generated content enters a review queue first; public feed only gets approved/published posts.
+Why: agentic posting should be intentional. The unit is not “candidate draft”; it is “we believe this post will land because X.” The post can still carry internal provenance and risk notes, but the architecture should bias toward planned publication and learning from outcomes, not editorial backlog accumulation.
 
 ### Feed exposure events
 
@@ -193,13 +195,13 @@ This gives Twutor a rhythm:
 **Commands:**
 
 ```bash
-bd create --parent twutor-ixj --type epic --priority P0 --title "Milestone 1.5: Agentic feed ops foundation" --description "Create the architecture for learner-aware agentic posting, review, and feed pacing before generated content starts writing directly into the public feed." --acceptance "Agents can draft research-backed tutor posts into a review queue; learner concept signals inform curation; feed pacing tracks exposure and targets no more than 20% unseen posts."
+bd create --parent twutor-ixj --type epic --priority P0 --title "Milestone 1.5: Agentic feed ops foundation" --description "Create the architecture for learner-aware agentic posting and feed pacing so agents publish posts they believe will land for the learner, then learn from exposure and engagement." --acceptance "Agents can create research-backed tutor posts from explicit landing hypotheses; learner concept signals inform what should be posted; feed pacing tracks exposure and targets no more than 20% unseen posts."
 ```
 
 Then create child issues for:
 
 - learner concept signals
-- generated post candidate queue
+- planned agentic posts with landing hypotheses
 - research-to-post content briefs
 - post insertion/publish lifecycle
 - feed exposure events
@@ -253,43 +255,45 @@ npm run typecheck
 
 ---
 
-### Task 3: Add generated post candidate review queue schema
+### Task 3: Add planned agentic post schema
 
-**Objective:** Separate AI-generated drafts from public feed posts.
+**Objective:** Represent posts agents believe should be published, including the hypothesis for why each post should land.
 
 **Files:**
 
 - Modify: `lib/db/schema.ts`
-- Create: `lib/generated-posts.ts`
-- Create: `tests/generated-posts.test.ts`
+- Create: `lib/agentic-posts.ts`
+- Create: `tests/agentic-posts.test.ts`
 
 **Implementation notes:**
 
-Add `generatedPostCandidates` with:
+Add `agenticPostPlans` with:
 
 - `briefId`
 - `tutorId`
 - `kind`
 - `body`
 - `attachmentPayload`
-- `rationale`
+- `landingHypothesis`
+- `expectedLearnerEffect`
 - `voiceNotes`
 - `status`
-- `qualityScore`
+- `expectedSeenProbability`
+- `expectedSaveProbability`
 - `riskNotes`
-- `publishedPostId`
+- `actualPostId`
 
 Add pure helper functions first:
 
-- `validateGeneratedCandidate(candidate)`
-- `candidateToPostInsert(candidate, sortOrder)`
+- `validateAgenticPostPlan(plan)`
+- `agenticPlanToPostInsert(plan, sortOrder)`
 
-Do not call an LLM yet. Use static fixtures in tests.
+Do not call an LLM yet. Use static fixtures in tests. The important behavior is that a plan must include a landing hypothesis and expected learner effect before it can be published.
 
 **Verification:**
 
 ```bash
-npm run test -- tests/generated-posts.test.ts
+npm run test -- tests/agentic-posts.test.ts
 npm run typecheck
 ```
 
@@ -351,6 +355,7 @@ npm run typecheck
 Start with pure functions:
 
 - `scorePostForLearner(post, learnerConceptStates, exposureHistory)`
+- `scorePlanLandingLikelihood(plan, learnerConceptStates, exposureHistory)`
 - `buildFeedPlan({ posts, conceptStates, exposureEvents, targetCount })`
 - `calculateUnseenRatio(posts, exposureEvents)`
 
@@ -413,22 +418,22 @@ npm run build
 
 ### Task 7: Add first admin review surface
 
-**Objective:** Give generated candidates a visible holding area before publishing.
+**Objective:** Inspect planned posts and their landing hypotheses without turning the workflow into a giant candidate backlog.
 
 **Files:**
 
 - Create: `app/admin/feed/page.tsx`
 - Create: `app/admin/feed/actions.ts`
-- Create: `components/admin/generated-post-review.tsx` if componentization helps
+- Create: `components/admin/agentic-post-plans.tsx` if componentization helps
 
 **Implementation notes:**
 
 Keep it intentionally rough but safe:
 
-- list draft/review candidates
-- show tutor, kind, body, rationale, voice notes, risk notes
-- approve/reject buttons
-- publish approved candidate into `posts` plus attachment rows
+- list planned/published/retired agentic post plans
+- show tutor, kind, body, landing hypothesis, expected learner effect, voice notes, risk notes
+- publish/retire controls
+- publish a planned post into `posts` plus attachment rows
 - guard with `NODE_ENV !== "production"` or an explicit `ADMIN_FEED_ENABLED=true`
 
 **Verification:**
@@ -440,42 +445,42 @@ npm run build
 
 Manual check:
 
-- create fixture candidate
-- approve it
+- create fixture plan
+- publish it
 - see it render in feed
 
 ---
 
-### Task 8: Add a non-LLM draft generator CLI
+### Task 8: Add a non-LLM planned-post generator CLI
 
-**Objective:** Exercise the architecture before integrating real LLM research agents.
+**Objective:** Exercise the architecture before integrating real LLM research agents by generating posts with explicit landing hypotheses.
 
 **Files:**
 
-- Create: `scripts/generate-draft-posts.ts`
-- Add script to `package.json`: `"content:draft": "tsx scripts/generate-draft-posts.ts"`
-- Create: `tests/generated-draft-script.test.ts` only if pure helpers can be extracted
+- Create: `scripts/plan-agentic-posts.ts`
+- Add script to `package.json`: `"content:plan": "tsx scripts/plan-agentic-posts.ts"`
+- Create: `tests/agentic-post-planner.test.ts` only if pure helpers can be extracted
 
 **Implementation notes:**
 
 The script can use deterministic templates at first:
 
 ```text
-Given a content brief and tutor voice metadata, create 3-5 candidate posts.
+Given a content brief, learner concept state, recent exposure history, and tutor voice metadata, create 3-5 planned posts with landing hypotheses.
 ```
 
-Do not publish directly. Insert candidates with `status=review`.
+The first CLI may insert plans with `status=planned`, but each plan should be publishable by design. The point is not “maybe someday”; the point is “we believe this should land because…”
 
 **Verification:**
 
 ```bash
-DATABASE_URL=... npm run content:draft
+DATABASE_URL=... npm run content:plan
 ```
 
 Expected output:
 
 ```text
-Created 5 generated post candidates for brief <id>.
+Created 5 agentic post plans for brief <id>.
 ```
 
 ---
@@ -492,7 +497,7 @@ Created 5 generated post candidates for brief <id>.
 
 **Documentation points:**
 
-- Agentic posting drafts, does not auto-publish.
+- Agentic posting creates planned posts from landing hypotheses, not speculative candidate piles.
 - Content briefs guide research and tutor voice.
 - Learner concept state informs curation.
 - Feed pacing optimizes for seen posts, not infinite inventory.
@@ -511,7 +516,7 @@ git diff -- docs/product-roadmap.md docs/persistence.md docs/agentic-posting.md
 Start with these three in order:
 
 1. **Learner concept state** — gives the system taste about what the learner knows.
-2. **Generated candidate queue** — prevents generation from polluting the feed.
+2. **Planned agentic posts** — gives every generated post a reason it should land.
 3. **Feed pacing simulator** — makes “no more than 20% unseen” a real constraint.
 
 Do not start with a beautiful admin UI. The architecture needs a brain before it needs a dashboard.
@@ -522,7 +527,7 @@ Do not start with a beautiful admin UI. The architecture needs a brain before it
 
 - **Too much schema too early:** keep fields compact and JSON escape hatches available for research/planning payloads.
 - **Fake personalization:** make recommendations explainable; if the system cannot say why a post appeared, the model is too hand-wavy.
-- **Infinite content sludge:** generated posts must be scarce, reviewed, and paced.
+- **Infinite content sludge:** generated posts must be scarce, hypothesis-driven, and paced.
 - **Overfitting to one learner:** acceptable for now. This is a single-user simulation, not collaborative filtering.
 - **Agent research hallucination:** research notes should preserve source URLs/titles/claims so generated posts can later cite evidence.
 
@@ -530,7 +535,7 @@ Do not start with a beautiful admin UI. The architecture needs a brain before it
 
 ## Open product questions
 
-1. Should generated posts appear as normal tutor posts, or carry a subtle “drafted from today’s research” internal provenance only?
+1. Should generated posts appear as normal tutor posts, or carry only internal provenance about the brief/research/hypothesis that produced them?
 2. What is the first real content arc: model gateways, evals, AI observability, RAG quality, or agent security?
 3. Should the learner explicitly tune the feed with “too easy / too advanced / more like this,” or should we infer from save/hide/revisit first?
 4. Is “20% unseen” measured per day, per session, or rolling seven-day feed inventory?
