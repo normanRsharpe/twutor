@@ -98,6 +98,10 @@ See [`docs/product-roadmap.md`](docs/product-roadmap.md) for the real-app featur
 
 See [`docs/persistence.md`](docs/persistence.md) for the Railway Postgres + Drizzle schema, migrations, seed, DB-backed feed, tutor profiles, and follow model.
 
+## Agentic posting
+
+See [`docs/agentic-posting.md`](docs/agentic-posting.md) for the learner-signal → brief → intent → pacing → admin review → publish/feedback workflow.
+
 ## Next milestone
 
 See [`docs/next-milestone.md`](docs/next-milestone.md) for the original Railway Postgres + Drizzle plan.
