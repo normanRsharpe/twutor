@@ -2,6 +2,7 @@ import type { Post, Tutor, TutorId } from "@/data/twutor";
 import type {
   agenticPostIntents,
   challenges,
+  contentBriefs,
   diagramNodes,
   generatedAssets,
   learnerConceptStates,
@@ -10,6 +11,7 @@ import type {
   postMetrics,
   posts as postTable,
   quotePosts,
+  researchNotes,
   traceCards,
   tutorFollows,
   learnerSavedPosts,
@@ -26,6 +28,8 @@ export type SeedRows = {
   tutors: (typeof tutorTable.$inferInsert)[];
   generatedAssets: (typeof generatedAssets.$inferInsert)[];
   conceptStates: (typeof learnerConceptStates.$inferInsert)[];
+  contentBriefs: (typeof contentBriefs.$inferInsert)[];
+  researchNotes: (typeof researchNotes.$inferInsert)[];
   agenticPostIntents: (typeof agenticPostIntents.$inferInsert)[];
   follows: (typeof tutorFollows.$inferInsert)[];
   savedPosts: (typeof learnerSavedPosts.$inferInsert)[];
@@ -216,11 +220,96 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
         nextAction: "revisit"
       }
     ],
+    contentBriefs: [
+      {
+        id: "brief-agentic-feed-foundation",
+        learnerId: demoLearnerId,
+        status: "active" as const,
+        theme: "Agentic feed ops foundation",
+        objective:
+          "Plan feed-native tutor posts that mix useful randomness with learner-aware scaffolding: one easy win, one leap, one parallel track, and one revisit.",
+        targetConceptSlugs: ["agent-workflows", "agent-permissions", "inference-cost"],
+        revisitConceptSlugs: ["vector-databases"],
+        avoidConceptSlugs: ["multi-agent-framework-shopping"],
+        desiredPostMix: [
+          {
+            feedMove: "confidence_boost",
+            count: 1,
+            rationale: "Give the learner a rewarding 'I know this one' moment around model gateways."
+          },
+          {
+            feedMove: "leap",
+            count: 1,
+            rationale: "Open a future security lane with a vivid but non-blocking tool-permission idea."
+          },
+          {
+            feedMove: "parallel_track",
+            count: 1,
+            rationale: "Add inference-cost texture beside the current platform architecture arc."
+          },
+          {
+            feedMove: "revisit",
+            count: 1,
+            rationale: "Refresh stale vector database knowledge through citation and retrieval quality."
+          }
+        ],
+        learnerContextSnapshot:
+          "Norman is confident on model gateways, stale on vector databases, and new to agent workflows; keep the feed social, varied, and not too curriculum-shaped."
+      }
+    ],
+    researchNotes: [
+      {
+        id: "note-agent-workflows-boundaries",
+        contentBriefId: "brief-agentic-feed-foundation",
+        sourceTitle: "Agent workflows need explicit tool boundaries",
+        sourceUrl: null,
+        summary:
+          "Agentic workflows become easier to trust when the system names which tools can be called, which policy gates apply, and what gets traced for review.",
+        claims: [
+          "Tool permissioning is a platform boundary, not just a prompt instruction.",
+          "Policy and traceability make agent behavior reviewable after the fact.",
+          "A security-flavored feed post can spark curiosity before the learner has mastered workflows."
+        ],
+        relatedConceptSlugs: ["agent-workflows", "agent-permissions"],
+        reviewNotes: "Good source material for Sam; keep the post vivid and bounded rather than turning it into a policy lecture."
+      },
+      {
+        id: "note-vector-retrieval-quality",
+        contentBriefId: "brief-agentic-feed-foundation",
+        sourceTitle: "Retrieval quality beats vector database theater",
+        sourceUrl: null,
+        summary:
+          "Retrieval posts should emphasize answer quality, citations, chunking, and reviewable evidence instead of treating the vector database choice as the main event.",
+        claims: [
+          "Citation quality is a better learner-facing hook than vector database branding.",
+          "Stale retrieval concepts can be revisited through practical source-grounding questions.",
+          "Nora should connect vector search back to whether a learner can trust the answer."
+        ],
+        relatedConceptSlugs: ["vector-databases", "rag-citations"],
+        reviewNotes: "Use for a calm Nora revisit; avoid generic RAG 101 and keep the post anchored to citation review."
+      },
+      {
+        id: "note-inference-cost-platform-texture",
+        contentBriefId: "brief-agentic-feed-foundation",
+        sourceTitle: "Inference cost is platform texture for model gateways",
+        sourceUrl: null,
+        summary:
+          "Model gateway thinking becomes more production-real when routing, latency, provider choice, and cost are visible next to policy and traces.",
+        claims: [
+          "Inference cost can run as a parallel track beside gateway architecture.",
+          "Routing and latency tradeoffs make platform posts feel more like production systems.",
+          "A Theo challenge should broaden intuition without derailing the current arc."
+        ],
+        relatedConceptSlugs: ["inference-cost", "model-gateways"],
+        reviewNotes: "Use for Theo; keep the economic frame blunt, concrete, and adjacent."
+      }
+    ],
     agenticPostIntents: [
       {
         id: "intent-maya-gateway-confidence",
         learnerId: demoLearnerId,
         tutorId: "maya",
+        contentBriefId: "brief-agentic-feed-foundation",
         status: "planned" as const,
         feedMove: "confidence_boost" as const,
         noveltyLevel: "familiar" as const,
@@ -239,6 +328,7 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
         id: "intent-sam-agent-permission-leap",
         learnerId: demoLearnerId,
         tutorId: "sam",
+        contentBriefId: "brief-agentic-feed-foundation",
         status: "planned" as const,
         feedMove: "leap" as const,
         noveltyLevel: "leap" as const,
@@ -257,6 +347,7 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
         id: "intent-theo-inference-parallel",
         learnerId: demoLearnerId,
         tutorId: "theo",
+        contentBriefId: "brief-agentic-feed-foundation",
         status: "planned" as const,
         feedMove: "parallel_track" as const,
         noveltyLevel: "adjacent" as const,
@@ -275,6 +366,7 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
         id: "intent-nora-vector-revisit",
         learnerId: demoLearnerId,
         tutorId: "nora",
+        contentBriefId: "brief-agentic-feed-foundation",
         status: "planned" as const,
         feedMove: "revisit" as const,
         noveltyLevel: "adjacent" as const,

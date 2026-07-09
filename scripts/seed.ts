@@ -5,6 +5,7 @@ import { posts, tutors } from "../data/twutor";
 import {
   agenticPostIntents,
   challenges,
+  contentBriefs,
   diagramNodes,
   generatedAssets,
   learnerConceptStates,
@@ -15,6 +16,7 @@ import {
   postMetrics,
   posts as postTable,
   quotePosts,
+  researchNotes,
   traceCards,
   tutorFollows,
   tutors as tutorTable
@@ -57,6 +59,7 @@ async function main() {
 
     for (const learnerId of learnerIds) {
       await tx.delete(agenticPostIntents).where(eq(agenticPostIntents.learnerId, learnerId));
+      await tx.delete(contentBriefs).where(eq(contentBriefs.learnerId, learnerId));
       await tx.delete(learnerConceptStates).where(eq(learnerConceptStates.learnerId, learnerId));
       await tx.delete(learnerLearningStates).where(eq(learnerLearningStates.learnerId, learnerId));
       await tx.delete(learners).where(eq(learners.id, learnerId));
@@ -65,6 +68,8 @@ async function main() {
     await tx.insert(learners).values(seed.learners);
     await tx.insert(learnerLearningStates).values(seed.learningStates);
     await tx.insert(learnerConceptStates).values(seed.conceptStates);
+    await tx.insert(contentBriefs).values(seed.contentBriefs);
+    await tx.insert(researchNotes).values(seed.researchNotes);
     await tx.insert(tutorTable).values(seed.tutors);
     await tx.insert(generatedAssets).values(seed.generatedAssets);
     await tx.insert(tutorFollows).values(seed.follows);
@@ -80,7 +85,7 @@ async function main() {
     if (seed.challenges.length) await tx.insert(challenges).values(seed.challenges);
   });
 
-  console.log(`Seeded ${seed.tutors.length} tutors, ${seed.posts.length} posts, ${seed.follows.length} follows, ${seed.savedPosts.length} saved posts, ${seed.learningStates.length} learning states, ${seed.conceptStates.length} concept states, ${seed.agenticPostIntents.length} agentic post intents.`);
+  console.log(`Seeded ${seed.tutors.length} tutors, ${seed.posts.length} posts, ${seed.follows.length} follows, ${seed.savedPosts.length} saved posts, ${seed.learningStates.length} learning states, ${seed.conceptStates.length} concept states, ${seed.contentBriefs.length} content briefs, ${seed.researchNotes.length} research notes, ${seed.agenticPostIntents.length} agentic post intents.`);
 }
 
 main()

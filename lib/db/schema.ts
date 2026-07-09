@@ -13,6 +13,7 @@ import {
 export const postKindEnum = pgEnum("post_kind", ["text", "diagram", "quote", "poll", "trace", "challenge"]);
 export const assetOwnerEnum = pgEnum("asset_owner", ["tutor", "post", "challenge"]);
 export const conceptFamiliarityEnum = pgEnum("concept_familiarity", ["unknown", "seen", "familiar", "confident", "stale"]);
+export const contentBriefStatusEnum = pgEnum("content_brief_status", ["draft", "active", "archived"]);
 export const agenticPostIntentStatusEnum = pgEnum("agentic_post_intent_status", ["planned", "published", "retired"]);
 export const agenticFeedMoveEnum = pgEnum("agentic_feed_move", [
   "bridge",
@@ -99,10 +100,38 @@ export const learnerConceptStates = pgTable(
   (table) => ({ pk: primaryKey({ columns: [table.learnerId, table.conceptSlug] }) })
 );
 
+export const contentBriefs = pgTable("content_briefs", {
+  id: text("id").primaryKey(),
+  learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+  status: contentBriefStatusEnum("status").default("draft").notNull(),
+  theme: text("theme").notNull(),
+  objective: text("objective").notNull(),
+  targetConceptSlugs: text("target_concept_slugs").array().notNull(),
+  revisitConceptSlugs: text("revisit_concept_slugs").array().notNull(),
+  avoidConceptSlugs: text("avoid_concept_slugs").array().notNull(),
+  desiredPostMix: jsonb("desired_post_mix").$type<{ feedMove: string; count: number; rationale: string }[]>().notNull(),
+  learnerContextSnapshot: text("learner_context_snapshot").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const researchNotes = pgTable("research_notes", {
+  id: text("id").primaryKey(),
+  contentBriefId: text("content_brief_id").notNull().references(() => contentBriefs.id, { onDelete: "cascade" }),
+  sourceTitle: text("source_title").notNull(),
+  sourceUrl: text("source_url"),
+  summary: text("summary").notNull(),
+  claims: text("claims").array().notNull(),
+  relatedConceptSlugs: text("related_concept_slugs").array().notNull(),
+  reviewNotes: text("review_notes").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
 export const agenticPostIntents = pgTable("agentic_post_intents", {
   id: text("id").primaryKey(),
   learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
   tutorId: text("tutor_id").notNull().references(() => tutors.id, { onDelete: "cascade" }),
+  contentBriefId: text("content_brief_id").references(() => contentBriefs.id, { onDelete: "set null" }),
   status: agenticPostIntentStatusEnum("status").default("planned").notNull(),
   feedMove: agenticFeedMoveEnum("feed_move").notNull(),
   noveltyLevel: agenticNoveltyLevelEnum("novelty_level").notNull(),
