@@ -3,6 +3,7 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { posts, tutors } from "../data/twutor";
 import {
+  agenticPostIntents,
   challenges,
   diagramNodes,
   generatedAssets,
@@ -36,6 +37,7 @@ const learnerIds = seed.learners.map((learner) => learner.id);
 async function main() {
   await db.transaction(async (tx) => {
     if (postIds.length) {
+      await tx.delete(agenticPostIntents).where(inArray(agenticPostIntents.publishedPostId, postIds));
       await tx.delete(challenges).where(inArray(challenges.postId, postIds));
       await tx.delete(traceCards).where(inArray(traceCards.postId, postIds));
       await tx.delete(pollOptions).where(inArray(pollOptions.postId, postIds));
@@ -46,6 +48,7 @@ async function main() {
     }
 
     if (tutorIds.length) {
+      await tx.delete(agenticPostIntents).where(inArray(agenticPostIntents.tutorId, tutorIds));
       await tx.delete(generatedAssets).where(inArray(generatedAssets.ownerId, tutorIds));
       await tx.delete(tutorFollows).where(inArray(tutorFollows.tutorId, tutorIds));
       await tx.delete(learnerSavedPosts).where(inArray(learnerSavedPosts.postId, postIds));
@@ -53,6 +56,7 @@ async function main() {
     }
 
     for (const learnerId of learnerIds) {
+      await tx.delete(agenticPostIntents).where(eq(agenticPostIntents.learnerId, learnerId));
       await tx.delete(learnerConceptStates).where(eq(learnerConceptStates.learnerId, learnerId));
       await tx.delete(learnerLearningStates).where(eq(learnerLearningStates.learnerId, learnerId));
       await tx.delete(learners).where(eq(learners.id, learnerId));
@@ -65,6 +69,7 @@ async function main() {
     await tx.insert(generatedAssets).values(seed.generatedAssets);
     await tx.insert(tutorFollows).values(seed.follows);
     await tx.insert(postTable).values(seed.posts);
+    await tx.insert(agenticPostIntents).values(seed.agenticPostIntents);
     await tx.insert(learnerSavedPosts).values(seed.savedPosts);
     await tx.insert(postMetrics).values(seed.postMetrics);
 
@@ -75,7 +80,7 @@ async function main() {
     if (seed.challenges.length) await tx.insert(challenges).values(seed.challenges);
   });
 
-  console.log(`Seeded ${seed.tutors.length} tutors, ${seed.posts.length} posts, ${seed.follows.length} follows, ${seed.savedPosts.length} saved posts, ${seed.learningStates.length} learning states, ${seed.conceptStates.length} concept states.`);
+  console.log(`Seeded ${seed.tutors.length} tutors, ${seed.posts.length} posts, ${seed.follows.length} follows, ${seed.savedPosts.length} saved posts, ${seed.learningStates.length} learning states, ${seed.conceptStates.length} concept states, ${seed.agenticPostIntents.length} agentic post intents.`);
 }
 
 main()

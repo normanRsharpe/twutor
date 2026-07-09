@@ -13,6 +13,19 @@ import {
 export const postKindEnum = pgEnum("post_kind", ["text", "diagram", "quote", "poll", "trace", "challenge"]);
 export const assetOwnerEnum = pgEnum("asset_owner", ["tutor", "post", "challenge"]);
 export const conceptFamiliarityEnum = pgEnum("concept_familiarity", ["unknown", "seen", "familiar", "confident", "stale"]);
+export const agenticPostIntentStatusEnum = pgEnum("agentic_post_intent_status", ["planned", "published", "retired"]);
+export const agenticFeedMoveEnum = pgEnum("agentic_feed_move", [
+  "bridge",
+  "introduce",
+  "revisit",
+  "deepen",
+  "apply",
+  "confidence_boost",
+  "leap",
+  "parallel_track",
+  "serendipity"
+]);
+export const agenticNoveltyLevelEnum = pgEnum("agentic_novelty_level", ["familiar", "adjacent", "stretch", "leap"]);
 
 export const learners = pgTable("learners", {
   id: text("id").primaryKey(),
@@ -85,6 +98,27 @@ export const learnerConceptStates = pgTable(
   },
   (table) => ({ pk: primaryKey({ columns: [table.learnerId, table.conceptSlug] }) })
 );
+
+export const agenticPostIntents = pgTable("agentic_post_intents", {
+  id: text("id").primaryKey(),
+  learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+  tutorId: text("tutor_id").notNull().references(() => tutors.id, { onDelete: "cascade" }),
+  status: agenticPostIntentStatusEnum("status").default("planned").notNull(),
+  feedMove: agenticFeedMoveEnum("feed_move").notNull(),
+  noveltyLevel: agenticNoveltyLevelEnum("novelty_level").notNull(),
+  targetConceptSlugs: text("target_concept_slugs").array().notNull(),
+  relatedConceptSlugs: text("related_concept_slugs").array().notNull(),
+  landingHypothesis: text("landing_hypothesis").notNull(),
+  expectedLearnerEffect: text("expected_learner_effect").notNull(),
+  expectedSeenProbability: integer("expected_seen_probability").notNull(),
+  expectedSaveProbability: integer("expected_save_probability").notNull(),
+  suggestedPostKind: postKindEnum("suggested_post_kind").notNull(),
+  voiceNotes: text("voice_notes").notNull(),
+  riskNotes: text("risk_notes").notNull(),
+  publishedPostId: text("published_post_id").references(() => posts.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
 
 export const generatedAssets = pgTable("generated_assets", {
   id: text("id").primaryKey(),

@@ -1,5 +1,6 @@
 import type { Post, Tutor, TutorId } from "@/data/twutor";
 import type {
+  agenticPostIntents,
   challenges,
   diagramNodes,
   generatedAssets,
@@ -25,6 +26,7 @@ export type SeedRows = {
   tutors: (typeof tutorTable.$inferInsert)[];
   generatedAssets: (typeof generatedAssets.$inferInsert)[];
   conceptStates: (typeof learnerConceptStates.$inferInsert)[];
+  agenticPostIntents: (typeof agenticPostIntents.$inferInsert)[];
   follows: (typeof tutorFollows.$inferInsert)[];
   savedPosts: (typeof learnerSavedPosts.$inferInsert)[];
   learningStates: (typeof learnerLearningStates.$inferInsert)[];
@@ -212,6 +214,80 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
         confidence: 48,
         evidence: "Previously saved RAG material but has not revisited retrieval tradeoffs recently",
         nextAction: "revisit"
+      }
+    ],
+    agenticPostIntents: [
+      {
+        id: "intent-maya-gateway-confidence",
+        learnerId: demoLearnerId,
+        tutorId: "maya",
+        status: "planned" as const,
+        feedMove: "confidence_boost" as const,
+        noveltyLevel: "familiar" as const,
+        targetConceptSlugs: ["model-gateways"],
+        relatedConceptSlugs: ["platform-apis", "golden-paths"],
+        landingHypothesis:
+          "Norman already understands model gateways, so a crisp Maya diagram should feel like an easy win while reinforcing his platform instincts.",
+        expectedLearnerEffect: "Reinforce fluency and create the satisfying feeling of recognizing a pattern he already knows.",
+        expectedSeenProbability: 82,
+        expectedSaveProbability: 42,
+        suggestedPostKind: "diagram" as const,
+        voiceNotes: "Maya should sound pragmatic and systems-minded, more paved-road critique than curriculum step.",
+        riskNotes: "Keep it rewarding, not remedial; avoid implying the learner is stuck on gateways."
+      },
+      {
+        id: "intent-sam-agent-permission-leap",
+        learnerId: demoLearnerId,
+        tutorId: "sam",
+        status: "planned" as const,
+        feedMove: "leap" as const,
+        noveltyLevel: "leap" as const,
+        targetConceptSlugs: ["agent-permissions", "tool-safety"],
+        relatedConceptSlugs: ["agent-workflows"],
+        landingHypothesis:
+          "Even though agent permissions are ahead of the current arc, Sam can make the risk vivid enough to open a future security lane.",
+        expectedLearnerEffect: "Spark curiosity about policy boundaries and seed a future track without requiring immediate mastery.",
+        expectedSeenProbability: 58,
+        expectedSaveProbability: 24,
+        suggestedPostKind: "poll" as const,
+        voiceNotes: "Sam should be adversarial and concise: name the confused-deputy failure before teaching the abstraction.",
+        riskNotes: "Use this sparingly; it is meant to be a horizon-expanding leap, not the dominant feed mode."
+      },
+      {
+        id: "intent-theo-inference-parallel",
+        learnerId: demoLearnerId,
+        tutorId: "theo",
+        status: "planned" as const,
+        feedMove: "parallel_track" as const,
+        noveltyLevel: "adjacent" as const,
+        targetConceptSlugs: ["inference-cost"],
+        relatedConceptSlugs: ["model-gateways"],
+        landingHypothesis:
+          "The learner is thinking in model-gateway terms; a Theo post about inference cost broadens that platform picture without depending on a strict prerequisite chain.",
+        expectedLearnerEffect: "Broaden production intuition by placing price, latency, and routing beside gateway design.",
+        expectedSeenProbability: 66,
+        expectedSaveProbability: 31,
+        suggestedPostKind: "challenge" as const,
+        voiceNotes: "Theo should be blunt and economic: every architecture choice gets a bill.",
+        riskNotes: "Do not let the cost angle derail the current AI systems arc; keep it adjacent and concrete."
+      },
+      {
+        id: "intent-nora-vector-revisit",
+        learnerId: demoLearnerId,
+        tutorId: "nora",
+        status: "planned" as const,
+        feedMove: "revisit" as const,
+        noveltyLevel: "adjacent" as const,
+        targetConceptSlugs: ["vector-databases"],
+        relatedConceptSlugs: ["rag-citations"],
+        landingHypothesis:
+          "Vector databases are stale for Norman, so Nora can revisit retrieval tradeoffs through citations rather than vector-database hype.",
+        expectedLearnerEffect: "Refresh an older concept and connect it back to citation quality in a calm, precise way.",
+        expectedSeenProbability: 61,
+        expectedSaveProbability: 35,
+        suggestedPostKind: "quote" as const,
+        voiceNotes: "Nora should stay citation-first and separate retrieval quality from prompt luck.",
+        riskNotes: "Avoid sounding like a vendor-neutral database explainer; the post should stay feed-native."
       }
     ],
     follows: ["eval", "maya"].map((tutorId) => ({ learnerId: demoLearnerId, tutorId })),
