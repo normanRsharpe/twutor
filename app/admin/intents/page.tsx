@@ -11,8 +11,8 @@ const statusStyles: Record<AgenticIntentAdminRow["status"], string> = {
   retired: "border-slate-600 bg-slate-800 text-slate-300"
 };
 
-function pill(label: string) {
-  return <span key={label} className="rounded-full border border-slate-700 bg-white/[0.03] px-2.5 py-1 text-xs font-black text-slate-300">{label}</span>;
+function pill(label: string, keyPrefix = "pill") {
+  return <span key={`${keyPrefix}:${label}`} className="rounded-full border border-slate-700 bg-white/[0.03] px-2.5 py-1 text-xs font-black text-slate-300">{label}</span>;
 }
 
 function AdminActionForms({ intent }: { intent: AgenticIntentAdminRow }) {
@@ -59,9 +59,9 @@ function IntentCard({ intent }: { intent: AgenticIntentAdminRow }) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {pill(intent.feedMove)}
-        {pill(intent.noveltyLevel)}
-        {intent.targetConceptSlugs.map(pill)}
+        {pill(intent.feedMove, "feed-move")}
+        {pill(intent.noveltyLevel, "novelty")}
+        {intent.targetConceptSlugs.map((slug) => pill(slug, "concept"))}
       </div>
 
       <div className="mt-4 rounded-2xl border border-slate-800 bg-white/[0.03] p-4">
