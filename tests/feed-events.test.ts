@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { posts, tutors } from "@/data/twutor";
-import { buildFeedEventRows, getSeenPostIdsFromEvents, recordFeedEvent } from "@/lib/feed-events";
+import { buildFeedEventRows, createFeedEventRow, getSeenPostIdsFromEvents, recordFeedEvent } from "@/lib/feed-events";
 import { buildSeedRows, demoLearnerId } from "@/lib/seed-data";
 
 describe("feed exposure and feedback events", () => {
@@ -49,5 +49,20 @@ describe("feed exposure and feedback events", () => {
       eventType: "opened",
       occurredAt: new Date("2026-07-09T12:00:00Z")
     });
+  });
+
+  it("creates runtime feedback events with UUID-backed ids instead of timestamp-only ids", () => {
+    const first = createFeedEventRow(
+      { learnerId: demoLearnerId, postId: "model-gateway", eventType: "opened" },
+      { idGenerator: () => "11111111-1111-4111-8111-111111111111" }
+    );
+    const second = createFeedEventRow(
+      { learnerId: demoLearnerId, postId: "model-gateway", eventType: "opened" },
+      { idGenerator: () => "22222222-2222-4222-8222-222222222222" }
+    );
+
+    expect(first.id).toBe("feed-event-norman-model-gateway-opened-11111111-1111-4111-8111-111111111111");
+    expect(second.id).toBe("feed-event-norman-model-gateway-opened-22222222-2222-4222-8222-222222222222");
+    expect(first.id).not.toBe(second.id);
   });
 });
