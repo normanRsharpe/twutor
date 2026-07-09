@@ -57,6 +57,13 @@
       "when": 1783558689845,
       "tag": "0007_boring_hairball",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783578624066,
+      "tag": "0008_abnormal_vanisher",
+      "breakpoints": true
     }
   ]
 }

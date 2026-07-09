@@ -16,6 +16,7 @@ import type {
   traceCards,
   tutorFollows,
   learnerSavedPosts,
+  learnerPrivateNotes,
   learnerLearningStates,
   tutors as tutorTable
 } from "@/lib/db/schema";
@@ -35,6 +36,7 @@ export type SeedRows = {
   agenticPostIntents: (typeof agenticPostIntents.$inferInsert)[];
   follows: (typeof tutorFollows.$inferInsert)[];
   savedPosts: (typeof learnerSavedPosts.$inferInsert)[];
+  privateNotes: (typeof learnerPrivateNotes.$inferInsert)[];
   feedEvents: (typeof feedEvents.$inferInsert)[];
   learningStates: (typeof learnerLearningStates.$inferInsert)[];
   posts: (typeof postTable.$inferInsert)[];
@@ -387,6 +389,7 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
     ],
     follows: ["eval", "maya"].map((tutorId) => ({ learnerId: demoLearnerId, tutorId })),
     savedPosts: ["evals-after-bug", "model-gateway"].map((postId) => ({ learnerId: demoLearnerId, postId })),
+    privateNotes: [],
     feedEvents: buildFeedEventRows([
       ...posts.map((post) => ({ learnerId: demoLearnerId, postId: post.id, eventType: "shown" as const })),
       { learnerId: demoLearnerId, postId: "evals-after-bug", eventType: "saved" as const },

@@ -18,7 +18,15 @@ import {
   tutors
 } from "@/lib/db/schema";
 import { createFeedEventRow, type FeedEventType } from "@/lib/feed-events";
+import {
+  getFallbackLearnerMemoryState,
+  updateFallbackLearnerPostSaved,
+  updateFallbackLearnerTutorFollow
+} from "@/lib/learner-memory";
+import { getFallbackGeneratedPostRows } from "@/lib/generated-content-queries";
 import { buildSeedRows, demoLearnerId, type SeedRows } from "@/lib/seed-data";
+import { getSocialActivitySummary } from "@/lib/social-texture-queries";
+import type { SocialActivitySummary } from "@/lib/social-texture";
 
 export type FeedKind = "for-you" | "following" | "saved";
 
@@ -60,7 +68,31 @@ export type FeedData = {
   tutorsToFollow: TutorId[];
   activeFeed: FeedKind;
   learningArc: LearningArc;
+  socialActivity: SocialActivitySummary;
 };
+
+function addMetric(metric: string, amount: number) {
+  const numeric = Number.parseInt(metric.replace(/[^0-9]/g, ""), 10);
+  if (!Number.isFinite(numeric) || amount === 0) return metric;
+  return String(numeric + amount);
+}
+
+function applySocialMetrics(feedPosts: FeedPost[], socialActivity: SocialActivitySummary): FeedPost[] {
+  return feedPosts.map((post) => {
+    const social = socialActivity.metricsByPostId[post.id];
+    if (!social) return post;
+
+    return {
+      ...post,
+      metrics: {
+        ...post.metrics,
+        replies: addMetric(post.metrics.replies, social.replies),
+        reposts: addMetric(post.metrics.reposts, social.reposts),
+        checks: addMetric(post.metrics.checks, social.checks)
+      }
+    };
+  });
+}
 
 function byPostId<T extends { postId: string }>(rows: T[]) {
   return rows.reduce<Record<string, T[]>>((acc, row) => {
@@ -188,17 +220,32 @@ export function assembleTutorViews(
 
 function fallbackFeedData({ tutorId, feed = "for-you" }: { tutorId?: string; feed?: FeedKind }): FeedData {
   const seed = buildSeedRows({ tutors: seedTutors, posts: seedPosts });
-  const tutorViews = assembleTutorViews(seed.tutors, seed.follows, seed.generatedAssets, seed.posts);
+  const generatedPosts = getFallbackGeneratedPostRows();
+  const learnerMemory = getFallbackLearnerMemoryState();
+  const memorySeed = {
+    ...seed,
+    posts: [...generatedPosts, ...seed.posts],
+    postMetrics: [
+      ...generatedPosts.map((post) => ({ postId: post.id, replies: "0", reposts: "0", checks: "0", views: "0" })),
+      ...seed.postMetrics
+    ],
+    follows: learnerMemory.follows,
+    savedPosts: learnerMemory.savedPosts,
+    learningStates: learnerMemory.learningStates
+  };
+  const tutorViews = assembleTutorViews(memorySeed.tutors, memorySeed.follows, memorySeed.generatedAssets, memorySeed.posts);
   const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
-  const feedPosts = assembleFeedPosts(seed, new Set(seed.savedPosts.map((saved) => saved.postId)));
-  const visiblePosts = filterPostsForFeed(feedPosts, feed, followed).filter((post) => !tutorId || post.tutorId === tutorId);
+  const feedPosts = assembleFeedPosts(memorySeed, new Set(memorySeed.savedPosts.map((saved) => saved.postId)));
+  const socialActivity = getSocialActivitySummary(feedPosts);
+  const visiblePosts = applySocialMetrics(filterPostsForFeed(feedPosts, feed, followed).filter((post) => !tutorId || post.tutorId === tutorId), socialActivity);
 
   return {
     tutors: tutorViews,
     posts: visiblePosts,
     tutorsToFollow: (Object.keys(tutorViews) as TutorId[]).filter((id) => !tutorViews[id].isFollowed).slice(0, 2),
     activeFeed: feed,
-    learningArc: assembleLearningArc(seed.learningStates[0], seed.savedPosts.length)
+    learningArc: assembleLearningArc(memorySeed.learningStates[0], memorySeed.savedPosts.length),
+    socialActivity
   };
 }
 
@@ -237,12 +284,16 @@ export async function getFeedData({ tutorId, feed = "for-you" }: { tutorId?: str
   const tutorViews = assembleTutorViews(tutorRows, followRows, assetRows, postRows);
   const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
 
+  const assembledPosts = assembleFeedPosts(seedLike, new Set(savedRows.map((saved) => saved.postId)));
+  const socialActivity = getSocialActivitySummary(assembledPosts);
+
   return {
     tutors: tutorViews,
-    posts: filterPostsForFeed(assembleFeedPosts(seedLike, new Set(savedRows.map((saved) => saved.postId))), feed, followed),
+    posts: applySocialMetrics(filterPostsForFeed(assembledPosts, feed, followed), socialActivity),
     tutorsToFollow: (Object.keys(tutorViews) as TutorId[]).filter((id) => !tutorViews[id].isFollowed).slice(0, 2),
     activeFeed: feed,
-    learningArc: assembleLearningArc(learningStateRows[0], savedRows.length)
+    learningArc: assembleLearningArc(learningStateRows[0], savedRows.length),
+    socialActivity
   };
 }
 
@@ -258,7 +309,10 @@ export async function listTutorIds() {
 }
 
 export async function setTutorFollow(tutorId: string, follow: boolean) {
-  if (!getDatabaseUrl()) return;
+  if (!getDatabaseUrl()) {
+    updateFallbackLearnerTutorFollow(tutorId, follow);
+    return;
+  }
   const db = getDb();
   if (follow) {
     await db.insert(tutorFollows).values({ learnerId: demoLearnerId, tutorId }).onConflictDoNothing();
@@ -274,7 +328,10 @@ export async function recordPostFeedEvent(postId: string, eventType: FeedEventTy
 }
 
 export async function setPostSaved(postId: string, saved: boolean) {
-  if (!getDatabaseUrl()) return;
+  if (!getDatabaseUrl()) {
+    updateFallbackLearnerPostSaved(postId, saved);
+    return;
+  }
   const db = getDb();
   if (saved) {
     await db.insert(learnerSavedPosts).values({ learnerId: demoLearnerId, postId }).onConflictDoNothing();

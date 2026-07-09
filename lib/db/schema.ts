@@ -16,6 +16,8 @@ export const conceptFamiliarityEnum = pgEnum("concept_familiarity", ["unknown", 
 export const contentBriefStatusEnum = pgEnum("content_brief_status", ["draft", "active", "archived"]);
 export const feedEventTypeEnum = pgEnum("feed_event_type", ["shown", "opened", "saved", "unsaved", "hidden", "dismissed", "revisited"]);
 export const agenticPostIntentStatusEnum = pgEnum("agentic_post_intent_status", ["planned", "published", "retired"]);
+export const askTutorResponseStatusEnum = pgEnum("ask_tutor_response_status", ["draft", "published"]);
+export const generatedContentStatusEnum = pgEnum("generated_content_status", ["draft", "published", "archived"]);
 export const agenticFeedMoveEnum = pgEnum("agentic_feed_move", [
   "bridge",
   "introduce",
@@ -96,6 +98,34 @@ export const learnerLearningStates = pgTable("learner_learning_states", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
 
+export const learnerPrivateNotes = pgTable("learner_private_notes", {
+  id: text("id").primaryKey(),
+  learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const askTutorQuestions = pgTable("ask_tutor_questions", {
+  id: text("id").primaryKey(),
+  learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+  question: text("question").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const askTutorResponses = pgTable("ask_tutor_responses", {
+  id: text("id").primaryKey(),
+  questionId: text("question_id").notNull().references(() => askTutorQuestions.id, { onDelete: "cascade" }),
+  tutorId: text("tutor_id").notNull().references(() => tutors.id, { onDelete: "cascade" }),
+  status: askTutorResponseStatusEnum("status").default("draft").notNull(),
+  body: text("body").notNull(),
+  guardrails: text("guardrails").array().notNull(),
+  followUpPrompt: text("follow_up_prompt").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  prompt: text("prompt").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
 export const learnerConceptStates = pgTable(
   "learner_concept_states",
   {
@@ -170,6 +200,22 @@ export const generatedAssets = pgTable("generated_assets", {
   url: text("url").notNull(),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const generatedContentDrafts = pgTable("generated_content_drafts", {
+  id: text("id").primaryKey(),
+  tutorId: text("tutor_id").notNull().references(() => tutors.id, { onDelete: "cascade" }),
+  kind: postKindEnum("kind").notNull(),
+  status: generatedContentStatusEnum("status").default("draft").notNull(),
+  theme: text("theme").notNull(),
+  prompt: text("prompt").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  body: text("body").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}).notNull(),
+  publishedPostId: text("published_post_id").references(() => posts.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
 
 export const posts = pgTable("posts", {

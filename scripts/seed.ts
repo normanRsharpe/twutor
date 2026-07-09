@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { posts, tutors } from "../data/twutor";
 import {
   agenticPostIntents,
+  askTutorQuestions,
   challenges,
   contentBriefs,
   diagramNodes,
@@ -11,6 +12,7 @@ import {
   generatedAssets,
   learnerConceptStates,
   learnerLearningStates,
+  learnerPrivateNotes,
   learnerSavedPosts,
   learners,
   pollOptions,
@@ -62,14 +64,17 @@ async function main() {
     for (const learnerId of learnerIds) {
       await tx.delete(feedEvents).where(eq(feedEvents.learnerId, learnerId));
       await tx.delete(agenticPostIntents).where(eq(agenticPostIntents.learnerId, learnerId));
+      await tx.delete(askTutorQuestions).where(eq(askTutorQuestions.learnerId, learnerId));
       await tx.delete(contentBriefs).where(eq(contentBriefs.learnerId, learnerId));
       await tx.delete(learnerConceptStates).where(eq(learnerConceptStates.learnerId, learnerId));
       await tx.delete(learnerLearningStates).where(eq(learnerLearningStates.learnerId, learnerId));
+      await tx.delete(learnerPrivateNotes).where(eq(learnerPrivateNotes.learnerId, learnerId));
       await tx.delete(learners).where(eq(learners.id, learnerId));
     }
 
     await tx.insert(learners).values(seed.learners);
     await tx.insert(learnerLearningStates).values(seed.learningStates);
+    if (seed.privateNotes.length) await tx.insert(learnerPrivateNotes).values(seed.privateNotes);
     await tx.insert(learnerConceptStates).values(seed.conceptStates);
     await tx.insert(contentBriefs).values(seed.contentBriefs);
     await tx.insert(researchNotes).values(seed.researchNotes);
@@ -89,7 +94,7 @@ async function main() {
     if (seed.challenges.length) await tx.insert(challenges).values(seed.challenges);
   });
 
-  console.log(`Seeded ${seed.tutors.length} tutors, ${seed.posts.length} posts, ${seed.follows.length} follows, ${seed.savedPosts.length} saved posts, ${seed.feedEvents.length} feed events, ${seed.learningStates.length} learning states, ${seed.conceptStates.length} concept states, ${seed.contentBriefs.length} content briefs, ${seed.researchNotes.length} research notes, ${seed.agenticPostIntents.length} agentic post intents.`);
+  console.log(`Seeded ${seed.tutors.length} tutors, ${seed.posts.length} posts, ${seed.follows.length} follows, ${seed.savedPosts.length} saved posts, ${seed.privateNotes.length} private notes, ${seed.feedEvents.length} feed events, ${seed.learningStates.length} learning states, ${seed.conceptStates.length} concept states, ${seed.contentBriefs.length} content briefs, ${seed.researchNotes.length} research notes, ${seed.agenticPostIntents.length} agentic post intents.`);
 }
 
 main()

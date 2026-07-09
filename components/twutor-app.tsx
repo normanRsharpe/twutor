@@ -3,7 +3,7 @@
 import { Brain, EyeOff, Search, SendHorizonal, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { recordPostHidden, recordPostOpened, togglePostSaved, toggleTutorFollow } from "@/app/actions";
+import { quoteTutorPost, reactToPost, recordPostHidden, recordPostOpened, replyToPost, togglePostSaved, toggleTutorFollow, voteOnPoll } from "@/app/actions";
 import {
   actionIcons,
   composerTools,
@@ -52,7 +52,7 @@ export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedDa
           </>
         )}
       </main>
-      <RightRail tutors={feedData.tutors} tutorsToFollow={feedData.tutorsToFollow} learningArc={feedData.learningArc} />
+      <RightRail tutors={feedData.tutors} tutorsToFollow={feedData.tutorsToFollow} learningArc={feedData.learningArc} socialActivity={feedData.socialActivity} />
       <FloatingActions />
       {toast ? <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#e7e9ea] px-4 py-2 text-sm font-extrabold text-black shadow-2xl">{toast}</div> : null}
     </div>
@@ -64,8 +64,8 @@ function LeftNav({ onCue }: { onCue: (message: string) => void }) {
     <aside className="sticky top-0 hidden h-screen flex-col gap-3 border-r border-tw-border px-6 py-5 lg:flex">
       <a href="/" className="mb-4 text-[34px] font-black tracking-[-0.08em]">twut<span className="text-tw-blue">or</span></a>
       <nav className="space-y-1" aria-label="Primary">
-        {navItems.filter((item) => item.label !== "Build Lab" && item.label !== "Progress").map((item) => {
-          const href = item.label === "Home" ? "/" : item.label === "Tutors" ? "/tutors" : item.label === "Saved Models" ? "/saved" : "#";
+        {navItems.filter((item) => item.label !== "Build Lab").map((item) => {
+          const href = item.label === "Home" ? "/" : item.label === "Tutor Replies" ? "/replies" : item.label === "Tutors" ? "/tutors" : item.label === "Saved Models" ? "/saved" : item.label === "Progress" ? "/memory" : "#";
           return (
             <a
               key={item.label}
@@ -87,7 +87,7 @@ function LeftNav({ onCue }: { onCue: (message: string) => void }) {
           );
         })}
       </nav>
-      <button className="mt-2 h-[54px] w-[220px] rounded-full bg-tw-blue text-lg font-black text-white transition hover:bg-sky-400" onClick={() => onCue("Tutor council is listening")}>Ask Tutors</button>
+      <a href="/replies" className="mt-2 grid h-[54px] w-[220px] place-items-center rounded-full bg-tw-blue text-lg font-black text-white transition hover:bg-sky-400">Ask Tutors</a>
       <div className="mt-auto flex items-center gap-3 rounded-full p-2 transition hover:bg-white/10">
         <img src={learner.avatar} alt="" className="h-12 w-12 rounded-full object-cover" />
         <div className="min-w-0">
@@ -218,15 +218,23 @@ function Composer({ onCue }: { onCue: (message: string) => void }) {
   return (
     <section className="grid grid-cols-[48px_1fr] gap-4 border-b border-tw-border px-4 py-5">
       <img src={learner.avatar} alt="" className="h-12 w-12 rounded-full object-cover" />
-      <div>
-        <div className="mb-5 text-2xl font-medium text-tw-muted">What are you trying to understand?</div>
-        <div className="flex items-center justify-between border-t border-tw-border/70 pt-3">
+      <form action="/replies" method="get">
+        <label className="grid gap-3 text-2xl font-medium text-tw-muted">
+          Ask the tutor council
+          <textarea
+            name="question"
+            rows={3}
+            className="resize-none rounded-3xl border border-transparent bg-transparent px-4 py-3 text-xl font-medium text-white outline-none placeholder:text-tw-muted focus:border-tw-border focus:bg-white/[0.03]"
+            placeholder="What are you trying to understand?"
+          />
+        </label>
+        <div className="mt-4 flex items-center justify-between border-t border-tw-border/70 pt-3">
           <div className="flex gap-4 text-tw-blue">
             {composerTools.map((Icon, idx) => <Icon key={idx} className="h-5 w-5" strokeWidth={2.4} />)}
           </div>
-          <button className="rounded-full bg-tw-blue px-6 py-2 font-black text-white" onClick={() => onCue("Your confusion became a tutor thread")}>Ask</button>
+          <button className="rounded-full bg-tw-blue px-6 py-2 font-black text-white">Ask tutors</button>
         </div>
-      </div>
+      </form>
     </section>
   );
 }
@@ -248,7 +256,7 @@ function PostCard({ post, tutors }: { post: Post; tutors: Record<TutorId, TutorV
         <p className="mt-1 whitespace-pre-line text-[16px] leading-snug text-white">{post.body}</p>
         {post.diagram ? <Diagram nodes={post.diagram.nodes} caption={post.diagram.caption} /> : null}
         {post.quote ? <QuoteCard quote={post.quote} tutors={tutors} /> : null}
-        {post.poll ? <Poll options={post.poll} /> : null}
+        {post.poll ? <Poll postId={post.id} options={post.poll} /> : null}
         {post.trace ? <Trace data={post.trace} /> : null}
         {post.challenge ? <Challenge {...post.challenge} /> : null}
         <Actions post={post} />
@@ -283,14 +291,18 @@ function QuoteCard({ quote, tutors }: { quote: NonNullable<Post["quote"]>; tutor
   );
 }
 
-function Poll({ options }: { options: PollOption[] }) {
+function Poll({ postId, options }: { postId: string; options: PollOption[] }) {
   return (
     <div className="mt-3 overflow-hidden rounded-2xl border border-tw-border">
-      {options.map((option) => (
-        <div key={option.label} className="flex items-center justify-between border-b border-tw-border px-4 py-3 last:border-b-0">
-          <span className="font-bold">{option.label}</span>
-          <span className="font-black">{option.percent}%</span>
-        </div>
+      {options.map((option, index) => (
+        <form key={option.label} action={voteOnPoll} className="border-b border-tw-border last:border-b-0">
+          <input type="hidden" name="postId" value={postId} />
+          <input type="hidden" name="optionPosition" value={index} />
+          <button className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-white/[0.04]" aria-label={`Vote ${option.label}`}>
+            <span className="font-bold">{option.label}</span>
+            <span className="font-black">{option.percent}%</span>
+          </button>
+        </form>
       ))}
     </div>
   );
@@ -320,15 +332,33 @@ function Actions({ post }: { post: Post }) {
   const Reply = actionIcons.reply;
   const Repost = actionIcons.repost;
   const CheckIcon = actionIcons.check;
+  const QuoteIcon = Sparkles;
   const Views = actionIcons.views;
   const Bookmark = actionIcons.bookmark;
   const item = "flex items-center gap-1.5 text-sm text-tw-muted";
 
   return (
     <div className="mt-3 flex items-center justify-between pr-7">
-      <span className={item}><Reply className="h-5 w-5" />{post.metrics.replies}</span>
-      <span className={item}><Repost className="h-5 w-5" />{post.metrics.reposts}</span>
-      <span className={`${item} text-emerald-500`}><CheckIcon className="h-5 w-5" />{post.metrics.checks}</span>
+      <form action={replyToPost}>
+        <input type="hidden" name="postId" value={post.id} />
+        <input type="hidden" name="body" value="I would inspect retrieved context first." />
+        <button className={item} aria-label="Reply to post"><Reply className="h-5 w-5" />{post.metrics.replies}</button>
+      </form>
+      <form action={reactToPost}>
+        <input type="hidden" name="postId" value={post.id} />
+        <input type="hidden" name="reactionType" value="repost" />
+        <button className={item} aria-label="Repost post"><Repost className="h-5 w-5" />{post.metrics.reposts}</button>
+      </form>
+      <form action={reactToPost}>
+        <input type="hidden" name="postId" value={post.id} />
+        <input type="hidden" name="reactionType" value="check" />
+        <button className={`${item} text-emerald-500`} aria-label="Check post"><CheckIcon className="h-5 w-5" />{post.metrics.checks}</button>
+      </form>
+      <form action={quoteTutorPost}>
+        <input type="hidden" name="postId" value={post.id} />
+        <input type="hidden" name="body" value="Quoting this tutor thread for review." />
+        <button className={item} aria-label="Quote tutor post"><QuoteIcon className="h-5 w-5" /></button>
+      </form>
       <form action={recordPostOpened}>
         <input type="hidden" name="postId" value={post.id} />
         <button className={item} aria-label="Open post signal">
@@ -352,7 +382,20 @@ function Actions({ post }: { post: Post }) {
   );
 }
 
-function RightRail({ tutors, tutorsToFollow, learningArc }: { tutors: Record<TutorId, TutorView>; tutorsToFollow: TutorId[]; learningArc: LearningArc }) {
+function RightRail({
+  tutors,
+  tutorsToFollow,
+  learningArc,
+  socialActivity
+}: {
+  tutors: Record<TutorId, TutorView>;
+  tutorsToFollow: TutorId[];
+  learningArc: LearningArc;
+  socialActivity: FeedData["socialActivity"];
+}) {
+  const visibleTrends = socialActivity.trendingConfusions.length ? socialActivity.trendingConfusions : trendingConfusions;
+  const latestNotifications = socialActivity.notifications.slice(-6).reverse();
+
   return (
     <aside className="sticky top-0 hidden h-screen overflow-y-auto px-6 py-4 lg:block no-scrollbar">
       <label className="mb-4 flex h-12 items-center gap-3 rounded-full border border-tw-border bg-black px-4 text-tw-muted">
@@ -371,13 +414,22 @@ function RightRail({ tutors, tutorsToFollow, learningArc }: { tutors: Record<Tut
         </div>
       </RailCard>
       <RailCard title="Trending confusions" tight>
-        {trendingConfusions.map(([count, title], index) => (
+        {visibleTrends.map(([count, title], index) => (
           <div key={title} className="border-t border-tw-border px-4 py-3">
             <div className="text-sm text-tw-muted">{index + 1} · {count}</div>
             <div className="font-black">{title}</div>
           </div>
         ))}
       </RailCard>
+      {latestNotifications.length ? (
+        <RailCard title="Notifications" tight>
+          {latestNotifications.map((notification) => (
+            <div key={notification.id} className="border-t border-tw-border px-4 py-3 text-sm font-bold text-slate-200">
+              {notification.label}
+            </div>
+          ))}
+        </RailCard>
+      ) : null}
       <RailCard title="Tutors to follow" tight>
         {tutorsToFollow.map((id) => <FollowTutor key={id} tutor={tutors[id]} />)}
       </RailCard>
