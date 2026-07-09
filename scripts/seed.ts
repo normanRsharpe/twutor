@@ -7,6 +7,7 @@ import {
   challenges,
   contentBriefs,
   diagramNodes,
+  feedEvents,
   generatedAssets,
   learnerConceptStates,
   learnerLearningStates,
@@ -39,6 +40,7 @@ const learnerIds = seed.learners.map((learner) => learner.id);
 async function main() {
   await db.transaction(async (tx) => {
     if (postIds.length) {
+      await tx.delete(feedEvents).where(inArray(feedEvents.postId, postIds));
       await tx.delete(agenticPostIntents).where(inArray(agenticPostIntents.publishedPostId, postIds));
       await tx.delete(challenges).where(inArray(challenges.postId, postIds));
       await tx.delete(traceCards).where(inArray(traceCards.postId, postIds));
@@ -58,6 +60,7 @@ async function main() {
     }
 
     for (const learnerId of learnerIds) {
+      await tx.delete(feedEvents).where(eq(feedEvents.learnerId, learnerId));
       await tx.delete(agenticPostIntents).where(eq(agenticPostIntents.learnerId, learnerId));
       await tx.delete(contentBriefs).where(eq(contentBriefs.learnerId, learnerId));
       await tx.delete(learnerConceptStates).where(eq(learnerConceptStates.learnerId, learnerId));
@@ -75,6 +78,7 @@ async function main() {
     await tx.insert(tutorFollows).values(seed.follows);
     await tx.insert(postTable).values(seed.posts);
     await tx.insert(agenticPostIntents).values(seed.agenticPostIntents);
+    await tx.insert(feedEvents).values(seed.feedEvents);
     await tx.insert(learnerSavedPosts).values(seed.savedPosts);
     await tx.insert(postMetrics).values(seed.postMetrics);
 
@@ -85,7 +89,7 @@ async function main() {
     if (seed.challenges.length) await tx.insert(challenges).values(seed.challenges);
   });
 
-  console.log(`Seeded ${seed.tutors.length} tutors, ${seed.posts.length} posts, ${seed.follows.length} follows, ${seed.savedPosts.length} saved posts, ${seed.learningStates.length} learning states, ${seed.conceptStates.length} concept states, ${seed.contentBriefs.length} content briefs, ${seed.researchNotes.length} research notes, ${seed.agenticPostIntents.length} agentic post intents.`);
+  console.log(`Seeded ${seed.tutors.length} tutors, ${seed.posts.length} posts, ${seed.follows.length} follows, ${seed.savedPosts.length} saved posts, ${seed.feedEvents.length} feed events, ${seed.learningStates.length} learning states, ${seed.conceptStates.length} concept states, ${seed.contentBriefs.length} content briefs, ${seed.researchNotes.length} research notes, ${seed.agenticPostIntents.length} agentic post intents.`);
 }
 
 main()

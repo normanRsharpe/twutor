@@ -14,6 +14,7 @@ export const postKindEnum = pgEnum("post_kind", ["text", "diagram", "quote", "po
 export const assetOwnerEnum = pgEnum("asset_owner", ["tutor", "post", "challenge"]);
 export const conceptFamiliarityEnum = pgEnum("concept_familiarity", ["unknown", "seen", "familiar", "confident", "stale"]);
 export const contentBriefStatusEnum = pgEnum("content_brief_status", ["draft", "active", "archived"]);
+export const feedEventTypeEnum = pgEnum("feed_event_type", ["shown", "opened", "saved", "unsaved", "hidden", "dismissed", "revisited"]);
 export const agenticPostIntentStatusEnum = pgEnum("agentic_post_intent_status", ["planned", "published", "retired"]);
 export const agenticFeedMoveEnum = pgEnum("agentic_feed_move", [
   "bridge",
@@ -74,6 +75,16 @@ export const learnerSavedPosts = pgTable(
   },
   (table) => ({ pk: primaryKey({ columns: [table.learnerId, table.postId] }) })
 );
+
+export const feedEvents = pgTable("feed_events", {
+  id: text("id").primaryKey(),
+  learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+  postId: text("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  agenticPostIntentId: text("agentic_post_intent_id").references(() => agenticPostIntents.id, { onDelete: "set null" }),
+  eventType: feedEventTypeEnum("event_type").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}).notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull()
+});
 
 export const learnerLearningStates = pgTable("learner_learning_states", {
   learnerId: text("learner_id").primaryKey().references(() => learners.id, { onDelete: "cascade" }),

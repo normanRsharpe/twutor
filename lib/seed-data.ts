@@ -4,6 +4,7 @@ import type {
   challenges,
   contentBriefs,
   diagramNodes,
+  feedEvents,
   generatedAssets,
   learnerConceptStates,
   learners,
@@ -18,6 +19,7 @@ import type {
   learnerLearningStates,
   tutors as tutorTable
 } from "@/lib/db/schema";
+import { buildFeedEventRows } from "@/lib/feed-events";
 
 export const demoLearnerId = "norman";
 
@@ -33,6 +35,7 @@ export type SeedRows = {
   agenticPostIntents: (typeof agenticPostIntents.$inferInsert)[];
   follows: (typeof tutorFollows.$inferInsert)[];
   savedPosts: (typeof learnerSavedPosts.$inferInsert)[];
+  feedEvents: (typeof feedEvents.$inferInsert)[];
   learningStates: (typeof learnerLearningStates.$inferInsert)[];
   posts: (typeof postTable.$inferInsert)[];
   postMetrics: (typeof postMetrics.$inferInsert)[];
@@ -384,6 +387,14 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
     ],
     follows: ["eval", "maya"].map((tutorId) => ({ learnerId: demoLearnerId, tutorId })),
     savedPosts: ["evals-after-bug", "model-gateway"].map((postId) => ({ learnerId: demoLearnerId, postId })),
+    feedEvents: buildFeedEventRows([
+      ...posts.map((post) => ({ learnerId: demoLearnerId, postId: post.id, eventType: "shown" as const })),
+      { learnerId: demoLearnerId, postId: "evals-after-bug", eventType: "saved" as const },
+      { learnerId: demoLearnerId, postId: "model-gateway", eventType: "saved" as const },
+      { learnerId: demoLearnerId, postId: "ai-trace", eventType: "opened" as const },
+      { learnerId: demoLearnerId, postId: "retrieval-first", eventType: "revisited" as const },
+      { learnerId: demoLearnerId, postId: "rag-poll", eventType: "hidden" as const }
+    ]),
     learningStates: [
       {
         learnerId: demoLearnerId,

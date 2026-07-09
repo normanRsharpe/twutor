@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { setPostSaved, setTutorFollow } from "@/lib/feed-queries";
+import { recordPostFeedEvent, setPostSaved, setTutorFollow } from "@/lib/feed-queries";
 
 export async function toggleTutorFollow(formData: FormData) {
   const tutorId = String(formData.get("tutorId") ?? "");
@@ -26,4 +26,22 @@ export async function togglePostSaved(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/saved");
   revalidatePath("/tutors");
+}
+
+export async function recordPostOpened(formData: FormData) {
+  const postId = String(formData.get("postId") ?? "");
+
+  if (!postId) return;
+
+  await recordPostFeedEvent(postId, "opened", { surface: "feed", interaction: "open" });
+  revalidatePath("/");
+}
+
+export async function recordPostHidden(formData: FormData) {
+  const postId = String(formData.get("postId") ?? "");
+
+  if (!postId) return;
+
+  await recordPostFeedEvent(postId, "hidden", { surface: "feed", interaction: "hide" });
+  revalidatePath("/");
 }

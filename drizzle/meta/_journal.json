@@ -50,6 +50,13 @@
       "when": 1783557674033,
       "tag": "0006_special_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783558689845,
+      "tag": "0007_boring_hairball",
+      "breakpoints": true
     }
   ]
 }

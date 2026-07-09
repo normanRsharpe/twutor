@@ -5,6 +5,7 @@ import { getDatabaseUrl, getDb } from "@/lib/db/client";
 import {
   challenges,
   diagramNodes,
+  feedEvents,
   generatedAssets,
   learnerLearningStates,
   learnerSavedPosts,
@@ -16,6 +17,7 @@ import {
   tutorFollows,
   tutors
 } from "@/lib/db/schema";
+import type { FeedEventType } from "@/lib/feed-events";
 import { buildSeedRows, demoLearnerId, type SeedRows } from "@/lib/seed-data";
 
 export type FeedKind = "for-you" | "following" | "saved";
@@ -265,6 +267,18 @@ export async function setTutorFollow(tutorId: string, follow: boolean) {
   }
 }
 
+export async function recordPostFeedEvent(postId: string, eventType: FeedEventType, metadata: Record<string, unknown> = { surface: "feed" }) {
+  if (!getDatabaseUrl()) return;
+  const db = getDb();
+  await db.insert(feedEvents).values({
+    id: `feed-event-${demoLearnerId}-${postId}-${eventType}-${Date.now()}`,
+    learnerId: demoLearnerId,
+    postId,
+    eventType,
+    metadata
+  });
+}
+
 export async function setPostSaved(postId: string, saved: boolean) {
   if (!getDatabaseUrl()) return;
   const db = getDb();
@@ -273,4 +287,5 @@ export async function setPostSaved(postId: string, saved: boolean) {
   } else {
     await db.delete(learnerSavedPosts).where(and(eq(learnerSavedPosts.learnerId, demoLearnerId), eq(learnerSavedPosts.postId, postId)));
   }
+  await recordPostFeedEvent(postId, saved ? "saved" : "unsaved", { surface: "feed", saved });
 }

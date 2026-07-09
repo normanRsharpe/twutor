@@ -1,9 +1,9 @@
 "use client";
 
-import { Brain, Search, SendHorizonal, Sparkles } from "lucide-react";
+import { Brain, EyeOff, Search, SendHorizonal, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { togglePostSaved, toggleTutorFollow } from "@/app/actions";
+import { recordPostHidden, recordPostOpened, togglePostSaved, toggleTutorFollow } from "@/app/actions";
 import {
   actionIcons,
   composerTools,
@@ -329,7 +329,18 @@ function Actions({ post }: { post: Post }) {
       <span className={item}><Reply className="h-5 w-5" />{post.metrics.replies}</span>
       <span className={item}><Repost className="h-5 w-5" />{post.metrics.reposts}</span>
       <span className={`${item} text-emerald-500`}><CheckIcon className="h-5 w-5" />{post.metrics.checks}</span>
-      <span className={item}><Views className="h-5 w-5" />{post.metrics.views}</span>
+      <form action={recordPostOpened}>
+        <input type="hidden" name="postId" value={post.id} />
+        <button className={item} aria-label="Open post signal">
+          <Views className="h-5 w-5" />{post.metrics.views}
+        </button>
+      </form>
+      <form action={recordPostHidden}>
+        <input type="hidden" name="postId" value={post.id} />
+        <button className={item} aria-label="Hide post">
+          <EyeOff className="h-5 w-5" />
+        </button>
+      </form>
       <form action={togglePostSaved}>
         <input type="hidden" name="postId" value={post.id} />
         <input type="hidden" name="saved" value={String(!post.isSaved)} />
