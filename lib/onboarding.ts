@@ -1,4 +1,4 @@
-const allowedTutorIds = new Set(["maya", "eval", "nora", "kai", "lin", "priya"]);
+const allowedTutorIds = new Set(["maya", "eval", "nora", "sam", "iris", "theo"]);
 
 export type OnboardingSelection = {
   tutors: string[];

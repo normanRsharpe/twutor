@@ -8,9 +8,9 @@ const tutors = [
   ["maya", "Maya", "AI systems"],
   ["eval", "Eval", "LLM evaluation"],
   ["nora", "Nora", "Platform reliability"],
-  ["kai", "Kai", "Agent systems"],
-  ["lin", "Lin", "Retrieval"],
-  ["priya", "Priya", "Product systems"]
+  ["sam", "Sam", "Agent systems"],
+  ["iris", "Iris", "Retrieval"],
+  ["theo", "Theo", "Product systems"]
 ];
 
 export const dynamic = "force-dynamic";
@@ -25,6 +25,6 @@ export default async function OnboardingPage() {
     <section className="rounded-[28px] border border-tw-border bg-[#05070a] p-6"><h2 className="text-xl font-black">Choose a few starting topics</h2><div className="mt-4 flex flex-wrap gap-3">{topics.map((topic) => <label key={topic} className="cursor-pointer rounded-full border border-slate-700 px-4 py-2 text-sm font-bold"><input name="topics" type="checkbox" value={topic} className="mr-2" />{topic}</label>)}</div></section>
     <section className="rounded-[28px] border border-tw-border bg-[#05070a] p-6"><h2 className="text-xl font-black">Who should show up first?</h2><div className="mt-4 grid gap-3 sm:grid-cols-2">{tutors.map(([id, name, specialty]) => <label key={id} className="cursor-pointer rounded-2xl border border-slate-800 p-4"><input name="tutors" type="checkbox" value={id} className="mr-2" /><span className="font-black">{name}</span><span className="ml-2 text-sm text-tw-muted">{specialty}</span></label>)}</div></section>
     <section className="rounded-[28px] border border-tw-border bg-[#05070a] p-6"><label className="grid gap-2 font-black">Your pace<select name="cadence" defaultValue="3x weekly" className="rounded-2xl border border-slate-800 bg-black p-3"><option>3x weekly</option><option>Daily</option><option>Weekends</option><option>Whenever I can</option></select></label></section>
-    <div className="flex flex-wrap gap-3"><button name="intent" value="complete" className="rounded-full bg-tw-blue px-6 py-3 font-black text-white">Start my feed</button><button name="intent" value="skip" className="rounded-full border border-slate-700 px-6 py-3 font-black text-slate-300">Skip for now</button></div>
+    <div className="flex flex-wrap gap-3"><button name="intent" value="complete" className="rounded-full bg-tw-blue px-6 py-3 font-black text-white">Start my feed</button><button name="intent" value="skip" formNoValidate className="rounded-full border border-slate-700 px-6 py-3 font-black text-slate-300">Skip for now</button></div>
   </form></main>;
 }

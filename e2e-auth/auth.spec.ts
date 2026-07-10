@@ -111,3 +111,45 @@ test("two authenticated learners cannot see each other's private learning state"
 
   await secondContext.close();
 });
+
+test("onboarding persists selected tutors and topics while skip creates a truthful empty arc", async ({ page, browser }) => {
+  const suffix = Date.now();
+  const password = "Twutor-test-password-45";
+
+  await page.goto("/sign-up");
+  await page.getByLabel("Name").fill("Preference Learner");
+  await page.getByLabel("Email").fill(`preferences-${suffix}@example.com`);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL("/onboarding", { timeout: 30_000 });
+  await page.getByLabel("What are you here to build?").fill("Make AI systems observable");
+  await page.getByLabel("Observability").check();
+  await page.getByLabel("RAG systems").check();
+  await page.locator('input[name="tutors"][value="nora"]').check();
+  await page.locator('input[name="tutors"][value="iris"]').check();
+  await page.getByRole("button", { name: "Start my feed" }).click();
+  await expect(page).toHaveURL("/", { timeout: 30_000 });
+  await page.goto("/memory");
+  await expect(page.getByText("0%")).toBeVisible();
+  await expect(page.getByText("Observability")).toBeVisible();
+  await expect(page.getByText("RAG systems")).toBeVisible();
+  await expect(page.getByText("Nora")).toBeVisible();
+  await expect(page.getByText("Iris")).toBeVisible();
+  await page.goto("/onboarding");
+  await expect(page).toHaveURL("/", { timeout: 30_000 });
+
+  const skippedContext = await browser.newContext();
+  const skippedPage = await skippedContext.newPage();
+  await skippedPage.goto("/sign-up");
+  await skippedPage.getByLabel("Name").fill("Skip Learner");
+  await skippedPage.getByLabel("Email").fill(`skip-${suffix}@example.com`);
+  await skippedPage.getByLabel("Password").fill(password);
+  await skippedPage.getByRole("button", { name: "Create account" }).click();
+  await expect(skippedPage).toHaveURL("/onboarding", { timeout: 30_000 });
+  await skippedPage.getByRole("button", { name: "Skip for now" }).click();
+  await expect(skippedPage).toHaveURL("/", { timeout: 30_000 });
+  await skippedPage.goto("/memory");
+  await expect(skippedPage.getByText("0%")).toBeVisible();
+  await expect(skippedPage.getByText("0 followed tutors")).toBeVisible();
+  await skippedContext.close();
+});
