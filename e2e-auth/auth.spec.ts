@@ -1,4 +1,13 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function finishOnboarding(page: Page) {
+  await expect(page).toHaveURL("/onboarding", { timeout: 30_000 });
+  await page.getByLabel("What are you here to build?").fill("Ship reliable AI systems");
+  await page.getByLabel("LLM evals").check();
+  await page.locator('input[name="tutors"][value="maya"]').check();
+  await page.getByRole("button", { name: "Start my feed" }).click();
+  await expect(page).toHaveURL("/", { timeout: 30_000 });
+}
 
 test("sign-up, sign-out, sign-in, and a second browser session resolve one learner", async ({ page, browser }) => {
   const email = `auth-e2e-${Date.now()}@example.com`;
@@ -14,7 +23,7 @@ test("sign-up, sign-out, sign-in, and a second browser session resolve one learn
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Create account" }).click();
 
-  await expect(page).toHaveURL("/", { timeout: 30_000 });
+  await finishOnboarding(page);
   await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
   await expect(page.locator("aside").getByText(name)).toBeVisible();
   const handle = await page.locator("aside").locator("text=/^@auth-e2e-learner-/").textContent();
@@ -69,7 +78,7 @@ test("two authenticated learners cannot see each other's private learning state"
   await page.getByLabel("Email").fill(`account-a-${suffix}@example.com`);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL("/", { timeout: 30_000 });
+  await finishOnboarding(page);
 
   await page.getByLabel("Ask the tutor council").fill(question);
   await page.getByRole("button", { name: "Ask tutors" }).click();
@@ -91,7 +100,7 @@ test("two authenticated learners cannot see each other's private learning state"
   await secondPage.getByLabel("Email").fill(`account-b-${suffix}@example.com`);
   await secondPage.getByLabel("Password").fill(password);
   await secondPage.getByRole("button", { name: "Create account" }).click();
-  await expect(secondPage).toHaveURL("/", { timeout: 30_000 });
+  await finishOnboarding(secondPage);
 
   await secondPage.goto("/replies");
   await expect(secondPage.getByText(question)).toHaveCount(0);

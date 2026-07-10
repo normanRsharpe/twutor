@@ -5,6 +5,7 @@ import {
   authSessions,
   authUsers,
   authVerifications,
+  learnerOnboardings,
   learners
 } from "@/lib/db/schema";
 
@@ -14,6 +15,12 @@ describe("authentication schema", () => {
     expect(getTableName(learners)).toBe("learners");
     expect(learners.authUserId).toBeDefined();
     expect(authUsers.email).toBeDefined();
+  });
+
+  it("tracks a learner's durable onboarding choices separately from auth identity", () => {
+    expect(getTableName(learnerOnboardings)).toBe("learner_onboardings");
+    expect(learnerOnboardings.learnerId).toBeDefined();
+    expect(learnerOnboardings.completedAt).toBeDefined();
   });
 
   it("provides the Better Auth user, session, account, and verification models", () => {
