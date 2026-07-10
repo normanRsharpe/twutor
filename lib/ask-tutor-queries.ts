@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import { tutors as seedTutors, type TutorId } from "@/data/twutor";
 import { createAskTutorThread, type AskTutorResponseDraft, type AskTutorThread } from "@/lib/ask-tutors";
 import { getDatabaseUrl, getDb } from "@/lib/db/client";
@@ -17,10 +17,14 @@ export type AskTutorThreadView = Omit<AskTutorThread, "responses"> & {
   responses: AskTutorResponseView[];
 };
 
-let fallbackAskTutorThreads: AskTutorThread[] = [];
+const fallbackStore = globalThis as typeof globalThis & { __twutorAskTutorThreads?: AskTutorThread[] };
+
+function getFallbackAskTutorThreads() {
+  return (fallbackStore.__twutorAskTutorThreads ??= []);
+}
 
 export function resetFallbackAskTutorThreads() {
-  fallbackAskTutorThreads = [];
+  fallbackStore.__twutorAskTutorThreads = [];
 }
 
 function uniqueThreadsByQuestion<T extends { question: string }>(threads: T[]) {
@@ -48,9 +52,9 @@ function attachTutorViews(threads: AskTutorThread[]): AskTutorThreadView[] {
   }));
 }
 
-export async function createAskTutorThreadFromQuestion(question: string) {
+export async function createAskTutorThreadFromQuestion(question: string, learnerId = demoLearnerId) {
   const thread = await createAskTutorThread({
-    learnerId: demoLearnerId,
+    learnerId,
     question,
     tutors: seedTutors,
     aiClient: getTwutorAIClient(),
@@ -59,7 +63,7 @@ export async function createAskTutorThreadFromQuestion(question: string) {
   });
 
   if (!getDatabaseUrl()) {
-    fallbackAskTutorThreads = [thread, ...fallbackAskTutorThreads];
+    fallbackStore.__twutorAskTutorThreads = [thread, ...getFallbackAskTutorThreads()];
     return thread;
   }
 
@@ -91,15 +95,18 @@ export async function createAskTutorThreadFromQuestion(question: string) {
   return thread;
 }
 
-export async function listAskTutorThreads(): Promise<AskTutorThreadView[]> {
-  if (!getDatabaseUrl()) return attachTutorViews(fallbackAskTutorThreads);
+export async function listAskTutorThreads(learnerId: string): Promise<AskTutorThreadView[]> {
+  if (!getDatabaseUrl()) return attachTutorViews(getFallbackAskTutorThreads().filter((thread) => thread.learnerId === learnerId));
 
   const db = getDb();
-  const [questionRows, responseRows, tutorRows] = await Promise.all([
-    db.select().from(askTutorQuestions).where(eq(askTutorQuestions.learnerId, demoLearnerId)).orderBy(desc(askTutorQuestions.createdAt)),
-    db.select().from(askTutorResponses).orderBy(asc(askTutorResponses.createdAt)),
+  const [questionRows, tutorRows] = await Promise.all([
+    db.select().from(askTutorQuestions).where(eq(askTutorQuestions.learnerId, learnerId)).orderBy(desc(askTutorQuestions.createdAt)),
     db.select().from(tutors)
   ]);
+  const questionIds = questionRows.map((question) => question.id);
+  const responseRows = questionIds.length
+    ? await db.select().from(askTutorResponses).where(inArray(askTutorResponses.questionId, questionIds)).orderBy(asc(askTutorResponses.createdAt))
+    : [];
   const tutorsById = new Map(tutorRows.map((tutor) => [tutor.id, tutor]));
   const responsesByQuestion = responseRows.reduce<Record<string, AskTutorResponseView[]>>((acc, response) => {
     const tutor = tutorsById.get(response.tutorId);

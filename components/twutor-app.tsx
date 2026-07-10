@@ -1,9 +1,10 @@
 "use client";
 
-import { Brain, EyeOff, Search, SendHorizonal, Sparkles } from "lucide-react";
+import { Brain, EyeOff, LogOut, Search, SendHorizonal, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { quoteTutorPost, reactToPost, recordPostHidden, recordPostOpened, replyToPost, togglePostSaved, toggleTutorFollow, voteOnPoll } from "@/app/actions";
+import { askTutors, quoteTutorPost, reactToPost, recordPostHidden, recordPostOpened, replyToPost, togglePostSaved, toggleTutorFollow, voteOnPoll } from "@/app/actions";
+import { signOut } from "@/app/auth-actions";
 import {
   actionIcons,
   composerTools,
@@ -16,7 +17,17 @@ import {
 } from "@/data/twutor";
 import type { FeedData, LearningArc, TutorView } from "@/lib/feed-queries";
 
-export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedData: FeedData; selectedTutorId?: TutorId; mode?: "feed" | "tutors" | "saved" }) {
+export function TwutorApp({
+  feedData,
+  selectedTutorId,
+  mode = "feed",
+  learnerIdentity
+}: {
+  feedData: FeedData;
+  selectedTutorId?: TutorId;
+  mode?: "feed" | "tutors" | "saved";
+  learnerIdentity?: { name: string; handle: string; avatarUrl: string };
+}) {
   const [toast, setToast] = useState<string | null>(null);
 
   function cue(message: string) {
@@ -28,7 +39,7 @@ export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedDa
 
   return (
     <div className="mx-auto grid min-h-screen max-w-[1420px] grid-cols-1 bg-black text-[#e7e9ea] lg:grid-cols-[286px_minmax(520px,640px)_380px]">
-      <LeftNav onCue={cue} />
+      <LeftNav onCue={cue} learnerIdentity={learnerIdentity} />
       <main className="min-h-screen border-x border-tw-border lg:border-l-0">
         {mode === "tutors" ? <DirectoryTopBar /> : selectedTutor ? <TutorHero tutor={selectedTutor} /> : <TopBar activeFeed={feedData.activeFeed} mode={mode} />}
         {mode === "tutors" ? (
@@ -59,7 +70,9 @@ export function TwutorApp({ feedData, selectedTutorId, mode = "feed" }: { feedDa
   );
 }
 
-function LeftNav({ onCue }: { onCue: (message: string) => void }) {
+function LeftNav({ onCue, learnerIdentity }: { onCue: (message: string) => void; learnerIdentity?: { name: string; handle: string; avatarUrl: string } }) {
+  const activeLearner = learnerIdentity ?? { name: learner.name, handle: learner.handle, avatarUrl: learner.avatar };
+
   return (
     <aside className="sticky top-0 hidden h-screen flex-col gap-3 border-r border-tw-border px-6 py-5 lg:flex">
       <a href="/" className="mb-4 text-[34px] font-black tracking-[-0.08em]">twut<span className="text-tw-blue">or</span></a>
@@ -89,12 +102,16 @@ function LeftNav({ onCue }: { onCue: (message: string) => void }) {
       </nav>
       <a href="/replies" className="mt-2 grid h-[54px] w-[220px] place-items-center rounded-full bg-tw-blue text-lg font-black text-white transition hover:bg-sky-400">Ask Tutors</a>
       <div className="mt-auto flex items-center gap-3 rounded-full p-2 transition hover:bg-white/10">
-        <img src={learner.avatar} alt="" className="h-12 w-12 rounded-full object-cover" />
+        <img src={activeLearner.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
         <div className="min-w-0">
-          <div className="font-extrabold leading-tight">{learner.name}</div>
-          <div className="text-tw-muted">{learner.handle}</div>
+          <div className="truncate font-extrabold leading-tight">{activeLearner.name}</div>
+          <div className="truncate text-tw-muted">{activeLearner.handle}</div>
         </div>
-        <span className="ml-auto text-tw-muted">•••</span>
+        <form action={signOut} className="ml-auto">
+          <button aria-label="Sign out" title="Sign out" className="rounded-full p-2 text-tw-muted transition hover:bg-white/10 hover:text-white">
+            <LogOut className="h-4 w-4" />
+          </button>
+        </form>
       </div>
     </aside>
   );
@@ -218,7 +235,7 @@ function Composer({ onCue }: { onCue: (message: string) => void }) {
   return (
     <section className="grid grid-cols-[48px_1fr] gap-4 border-b border-tw-border px-4 py-5">
       <img src={learner.avatar} alt="" className="h-12 w-12 rounded-full object-cover" />
-      <form action="/replies" method="get">
+      <form action={askTutors}>
         <label className="grid gap-3 text-2xl font-medium text-tw-muted">
           Ask the tutor council
           <textarea

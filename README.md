@@ -22,7 +22,7 @@ Use a modern Node runtime. On this machine the Homebrew Node binary is preferred
 
 ```bash
 PATH=/opt/homebrew/bin:$PATH npm install
-PATH=/opt/homebrew/bin:$PATH npm run dev
+PATH=/opt/homebrew/bin:$PATH TWUTOR_DEMO_MODE=true npm run dev
 ```
 
 Production-style local run:
@@ -37,7 +37,7 @@ PATH=/opt/homebrew/bin:$PATH PORT=3000 npm start
 ```bash
 PATH=/opt/homebrew/bin:$PATH npm run typecheck
 PATH=/opt/homebrew/bin:$PATH npm run build
-PATH=/opt/homebrew/bin:$PATH npm audit --omit=dev
+PATH=/opt/homebrew/bin:$PATH npm audit --omit=dev --omit=optional
 ```
 
 ## Railway deployment
@@ -47,7 +47,7 @@ This repo is ready for Railway using Nixpacks:
 - build command: `npm run build`
 - start command: `npm start`
 - runtime port: Railway provides `PORT`
-- Node engine: `>=20 <27`
+- Node engine: `>=22 <27`
 
 Deploy from GitHub by creating a Railway project from `normanRsharpe/twutor`, or use the Railway CLI from this repo.
 
@@ -97,6 +97,10 @@ See [`docs/product-roadmap.md`](docs/product-roadmap.md) for the real-app featur
 ## Persistence
 
 See [`docs/persistence.md`](docs/persistence.md) for the Railway Postgres + Drizzle schema, migrations, seed, DB-backed feed, tutor profiles, and follow model.
+
+## Authentication
+
+See [`docs/authentication.md`](docs/authentication.md) for Better Auth, learner identity mapping, required environment, explicit local demo mode, and session acceptance testing.
 
 ## Agentic posting
 

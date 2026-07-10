@@ -3,19 +3,26 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAskTutorThreadFromQuestion } from "@/lib/ask-tutor-queries";
+import { requireCurrentLearner } from "@/lib/auth/server";
 import { recordPostFeedEvent, setPostSaved, setTutorFollow } from "@/lib/feed-queries";
 import { addLearnerPostReaction, addLearnerPostReply, addLearnerQuoteTutorPost, saveLearnerPollVote } from "@/lib/social-texture-queries";
 
 export async function askTutors(formData: FormData) {
-  const question = String(formData.get("question") ?? "");
-  if (!question.trim()) return;
+  const learner = await requireCurrentLearner();
+  const question = String(formData.get("question") ?? "").trim().slice(0, 2_000);
+  if (!question) return;
 
-  const thread = await createAskTutorThreadFromQuestion(question);
+  if (process.env.NODE_ENV === "development" && process.env.TWUTOR_DEMO_MODE === "true" && !process.env.DATABASE_URL) {
+    redirect(`/replies?${new URLSearchParams({ question }).toString()}`);
+  }
+
+  const thread = await createAskTutorThreadFromQuestion(question, learner.id);
   revalidatePath("/replies");
   redirect(`/replies?thread=${thread.id}`);
 }
 
 export async function toggleTutorFollow(formData: FormData) {
+  await requireCurrentLearner();
   const tutorId = String(formData.get("tutorId") ?? "");
   const follow = String(formData.get("follow") ?? "false") === "true";
 
@@ -29,6 +36,7 @@ export async function toggleTutorFollow(formData: FormData) {
 }
 
 export async function togglePostSaved(formData: FormData) {
+  await requireCurrentLearner();
   const postId = String(formData.get("postId") ?? "");
   const saved = String(formData.get("saved") ?? "false") === "true";
 
@@ -41,6 +49,7 @@ export async function togglePostSaved(formData: FormData) {
 }
 
 export async function recordPostOpened(formData: FormData) {
+  await requireCurrentLearner();
   const postId = String(formData.get("postId") ?? "");
 
   if (!postId) return;
@@ -50,6 +59,7 @@ export async function recordPostOpened(formData: FormData) {
 }
 
 export async function recordPostHidden(formData: FormData) {
+  await requireCurrentLearner();
   const postId = String(formData.get("postId") ?? "");
 
   if (!postId) return;
@@ -59,6 +69,7 @@ export async function recordPostHidden(formData: FormData) {
 }
 
 export async function replyToPost(formData: FormData) {
+  await requireCurrentLearner();
   const postId = String(formData.get("postId") ?? "");
   const body = String(formData.get("body") ?? "I would inspect retrieved context first.");
 
@@ -69,6 +80,7 @@ export async function replyToPost(formData: FormData) {
 }
 
 export async function reactToPost(formData: FormData) {
+  await requireCurrentLearner();
   const postId = String(formData.get("postId") ?? "");
   const reactionType = String(formData.get("reactionType") ?? "check");
 
@@ -79,6 +91,7 @@ export async function reactToPost(formData: FormData) {
 }
 
 export async function voteOnPoll(formData: FormData) {
+  await requireCurrentLearner();
   const postId = String(formData.get("postId") ?? "");
   const optionPosition = Number(formData.get("optionPosition") ?? 0);
 
@@ -89,6 +102,7 @@ export async function voteOnPoll(formData: FormData) {
 }
 
 export async function quoteTutorPost(formData: FormData) {
+  await requireCurrentLearner();
   const postId = String(formData.get("postId") ?? "");
   const body = String(formData.get("body") ?? "Quoting this tutor thread for review.");
 

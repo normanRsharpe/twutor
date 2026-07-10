@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { publishAgenticIntentAction, retireAgenticIntentAction } from "@/app/admin/intents/actions";
 import { isAgenticIntentsAdminEnabled, type AgenticIntentAdminRow } from "@/lib/admin-intents";
 import { getAgenticIntentAdminData } from "@/lib/admin-intent-queries";
+import { requireAdminLearner } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,7 @@ function IntentCard({ intent }: { intent: AgenticIntentAdminRow }) {
 
 export default async function AgenticIntentsAdminPage() {
   if (!isAgenticIntentsAdminEnabled()) notFound();
+  await requireAdminLearner();
 
   const { rows, counts } = await getAgenticIntentAdminData();
 
