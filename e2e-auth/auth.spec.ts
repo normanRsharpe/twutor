@@ -153,3 +153,22 @@ test("onboarding persists selected tutors and topics while skip creates a truthf
   await expect(skippedPage.getByText("0 followed tutors")).toBeVisible();
   await skippedContext.close();
 });
+
+test("a normal authenticated learner cannot access admin pages", async ({ page }) => {
+  const suffix = Date.now();
+  await page.goto("/sign-up");
+  await page.getByLabel("Name").fill("Non Admin Learner");
+  await page.getByLabel("Email").fill(`non-admin-${suffix}@example.com`);
+  await page.getByLabel("Password").fill("Twutor-test-password-46");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL("/onboarding", { timeout: 30_000 });
+  await page.getByRole("button", { name: "Skip for now" }).click();
+  await expect(page).toHaveURL("/", { timeout: 30_000 });
+
+  await page.goto("/admin/generate");
+  await expect(page.getByText("404")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Generated content pipeline" })).toHaveCount(0);
+  await page.goto("/admin/intents");
+  await expect(page.getByText("404")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Agentic post intents" })).toHaveCount(0);
+});

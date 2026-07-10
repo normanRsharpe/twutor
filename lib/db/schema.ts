@@ -100,6 +100,17 @@ export const learners = pgTable("learners", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });
 
+export const adminAuditEvents = pgTable("admin_audit_events", {
+  id: text("id").primaryKey(),
+  actorAuthUserId: text("actor_auth_user_id").notNull().references(() => authUsers.id, { onDelete: "restrict" }),
+  action: text("action").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  outcome: text("outcome").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
 export const learnerOnboardings = pgTable("learner_onboardings", {
   learnerId: text("learner_id").primaryKey().references(() => learners.id, { onDelete: "cascade" }),
   goal: text("goal"),

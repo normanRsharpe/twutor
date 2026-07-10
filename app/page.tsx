@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { TwutorApp } from "@/components/twutor-app";
+import { canRunDevelopmentReset } from "@/lib/admin-security";
 import { requireCurrentLearner } from "@/lib/auth/server";
 import { resetFallbackAskTutorThreads } from "@/lib/ask-tutor-queries";
 import { getFeedData, type FeedKind } from "@/lib/feed-queries";
@@ -25,7 +26,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const currentLearner = await requireCurrentLearner();
   if (!(await getLearnerOnboarding(currentLearner.id))) redirect("/onboarding");
   const params = await searchParams;
-  if (isEnabled(params.reset)) {
+  if (canRunDevelopmentReset({ nodeEnv: process.env.NODE_ENV, enabled: process.env.TWUTOR_DEV_RESET_ENABLED }) && isEnabled(params.reset)) {
     resetFallbackLearnerMemoryState();
     resetFallbackAskTutorThreads();
     resetFallbackGeneratedContentState();
