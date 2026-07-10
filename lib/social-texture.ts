@@ -63,6 +63,16 @@ export function createSocialTextureState(): SocialTextureState {
   return { replies: [], reactions: [], pollVotes: [], quotePosts: [], notifications: [] };
 }
 
+export function createSocialTextureStateFromRows(state: SocialTextureState): SocialTextureState {
+  return {
+    replies: [...state.replies],
+    reactions: [...state.reactions],
+    pollVotes: [...state.pollVotes],
+    quotePosts: [...state.quotePosts],
+    notifications: [...state.notifications]
+  };
+}
+
 function notificationId(kind: string, id: string) {
   return `${kind}:${id}`;
 }

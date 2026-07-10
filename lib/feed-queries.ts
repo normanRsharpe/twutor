@@ -218,7 +218,7 @@ export function assembleTutorViews(
   ) as Record<TutorId, TutorView>;
 }
 
-function fallbackFeedData({ learnerId, tutorId, feed = "for-you" }: { learnerId: string; tutorId?: string; feed?: FeedKind }): FeedData {
+async function fallbackFeedData({ learnerId, tutorId, feed = "for-you" }: { learnerId: string; tutorId?: string; feed?: FeedKind }): Promise<FeedData> {
   const seed = buildSeedRows({ tutors: seedTutors, posts: seedPosts });
   const generatedPosts = getFallbackGeneratedPostRows();
   const learnerMemory = getFallbackLearnerMemoryState();
@@ -236,7 +236,7 @@ function fallbackFeedData({ learnerId, tutorId, feed = "for-you" }: { learnerId:
   const tutorViews = assembleTutorViews(memorySeed.tutors, memorySeed.follows, memorySeed.generatedAssets, memorySeed.posts);
   const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
   const feedPosts = assembleFeedPosts(memorySeed, new Set(memorySeed.savedPosts.map((saved) => saved.postId)));
-  const socialActivity = getSocialActivitySummary(feedPosts, learnerId);
+  const socialActivity = await getSocialActivitySummary(feedPosts, learnerId);
   const visiblePosts = applySocialMetrics(filterPostsForFeed(feedPosts, feed, followed).filter((post) => !tutorId || post.tutorId === tutorId), socialActivity);
 
   return {
@@ -250,7 +250,7 @@ function fallbackFeedData({ learnerId, tutorId, feed = "for-you" }: { learnerId:
 }
 
 export async function getFeedData({ learnerId, tutorId, feed = "for-you" }: { learnerId: string; tutorId?: string; feed?: FeedKind }): Promise<FeedData> {
-  if (!getDatabaseUrl()) return fallbackFeedData({ learnerId, tutorId, feed });
+  if (!getDatabaseUrl()) return await fallbackFeedData({ learnerId, tutorId, feed });
 
   const db = getDb();
   const [tutorRows, followRows, savedRows, learningStateRows, assetRows, postRows, metricRows, diagramRows, quoteRows, pollRows, traceRows, challengeRows] = await Promise.all([
@@ -285,7 +285,7 @@ export async function getFeedData({ learnerId, tutorId, feed = "for-you" }: { le
   const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
 
   const assembledPosts = assembleFeedPosts(seedLike, new Set(savedRows.map((saved) => saved.postId)));
-  const socialActivity = getSocialActivitySummary(assembledPosts, learnerId);
+  const socialActivity = await getSocialActivitySummary(assembledPosts, learnerId);
 
   return {
     tutors: tutorViews,
