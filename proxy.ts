@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth/auth";
+import { isPublicOperationalPath } from "@/lib/auth/public-routes";
 import { localDemoModeEnabled, multiUserRolloutEnabled } from "@/lib/auth/server";
 
 export async function proxy(request: NextRequest) {
+  if (isPublicOperationalPath(request.nextUrl.pathname)) return NextResponse.next();
   if (!multiUserRolloutEnabled()) return new NextResponse("Twutor multi-user access is not enabled yet.", { status: 503 });
   if (localDemoModeEnabled()) return NextResponse.next();
 

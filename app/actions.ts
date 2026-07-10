@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createAskTutorThreadFromQuestion } from "@/lib/ask-tutor-queries";
 import { requireCurrentLearner } from "@/lib/auth/server";
 import { recordPostFeedEvent, setPostSaved, setTutorFollow } from "@/lib/feed-queries";
+import { runObservedAction } from "@/lib/operational-events";
 import { addLearnerPostReaction, addLearnerPostReply, addLearnerQuoteTutorPost, saveLearnerPollVote } from "@/lib/social-texture-queries";
 
 export async function askTutors(formData: FormData) {
@@ -16,7 +17,10 @@ export async function askTutors(formData: FormData) {
     redirect(`/replies?${new URLSearchParams({ question }).toString()}`);
   }
 
-  const thread = await createAskTutorThreadFromQuestion(question, learner.id);
+  const thread = await runObservedAction(
+    { action: "ask_tutors" },
+    () => createAskTutorThreadFromQuestion(question, learner.id)
+  );
   revalidatePath("/replies");
   redirect(`/replies?thread=${thread.id}`);
 }

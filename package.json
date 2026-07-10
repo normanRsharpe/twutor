@@ -11,6 +11,8 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "e2e:auth": "playwright test -c playwright.auth.config.ts",
+    "smoke:production": "tsx scripts/smoke-production.ts",
+    "verify:backup": "bash scripts/verify-backup-restore.sh",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts"
