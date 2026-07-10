@@ -57,3 +57,48 @@ test("sign-up, sign-out, sign-in, and a second browser session resolve one learn
   await expect(secondPage.locator("aside").getByText(handle!)).toBeVisible();
   await secondContext.close();
 });
+
+test("two authenticated learners cannot see each other's private learning state", async ({ page, browser }) => {
+  const suffix = Date.now();
+  const password = "Twutor-test-password-43";
+  const question = `Account A private tutor question ${suffix}`;
+  const note = `Account A private note ${suffix}`;
+
+  await page.goto("/sign-up");
+  await page.getByLabel("Name").fill("Account A");
+  await page.getByLabel("Email").fill(`account-a-${suffix}@example.com`);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL("/", { timeout: 30_000 });
+
+  await page.getByLabel("Ask the tutor council").fill(question);
+  await page.getByRole("button", { name: "Ask tutors" }).click();
+  await expect(page.getByRole("heading", { name: question })).toBeVisible({ timeout: 30_000 });
+
+  await page.goto("/memory");
+  await page.getByLabel("Private learning note").fill(note);
+  await page.getByRole("button", { name: "Save note" }).click();
+  await expect(page.getByText(note)).toBeVisible();
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Reply to post" }).first().click();
+  await expect(page.getByText("Your reply joined a tutor thread")).toBeVisible();
+
+  const secondContext = await browser.newContext();
+  const secondPage = await secondContext.newPage();
+  await secondPage.goto("/sign-up");
+  await secondPage.getByLabel("Name").fill("Account B");
+  await secondPage.getByLabel("Email").fill(`account-b-${suffix}@example.com`);
+  await secondPage.getByLabel("Password").fill(password);
+  await secondPage.getByRole("button", { name: "Create account" }).click();
+  await expect(secondPage).toHaveURL("/", { timeout: 30_000 });
+
+  await secondPage.goto("/replies");
+  await expect(secondPage.getByText(question)).toHaveCount(0);
+  await secondPage.goto("/memory");
+  await expect(secondPage.getByText(note)).toHaveCount(0);
+  await secondPage.goto("/");
+  await expect(secondPage.getByText("Your reply joined a tutor thread")).toHaveCount(0);
+
+  await secondContext.close();
+});
