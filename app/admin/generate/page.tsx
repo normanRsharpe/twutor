@@ -1,29 +1,11 @@
-import { getGeneratedContentAdminData, generateAdminContentDraft, publishAdminGeneratedContentDraft } from "@/lib/generated-content-queries";
-import type { GeneratedContentKind } from "@/lib/generated-content";
+import { generateContentDraftAction, publishContentDraftAction } from "@/app/admin/generate/actions";
+import { getGeneratedContentAdminData } from "@/lib/generated-content-queries";
+import { requireAdminLearner } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
 
-function normalizeSearchValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function parseKind(value: string | string[] | undefined): GeneratedContentKind {
-  const kind = normalizeSearchValue(value);
-  if (kind === "text" || kind === "diagram" || kind === "quote" || kind === "poll" || kind === "trace" || kind === "challenge") return kind;
-  return "diagram";
-}
-
-export default async function GeneratedContentAdminPage({
-  searchParams
-}: {
-  searchParams: Promise<{ theme?: string | string[]; kind?: string | string[]; publishDraft?: string | string[] }>;
-}) {
-  const params = await searchParams;
-  const theme = normalizeSearchValue(params.theme)?.trim();
-  const publishDraft = normalizeSearchValue(params.publishDraft)?.trim();
-
-  if (theme) await generateAdminContentDraft({ theme, kind: parseKind(params.kind), tutorId: "maya" });
-  if (publishDraft) await publishAdminGeneratedContentDraft(publishDraft);
+export default async function GeneratedContentAdminPage() {
+  await requireAdminLearner();
 
   const { rows } = await getGeneratedContentAdminData();
 
@@ -35,7 +17,7 @@ export default async function GeneratedContentAdminPage({
           <div className="text-xs font-black uppercase tracking-[0.18em] text-tw-blue">Dev admin · mocked OpenAI</div>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-white">Generated content pipeline</h1>
           <p className="mt-2 max-w-2xl text-sm leading-snug text-slate-400">Generate a tutor draft with mocked OpenAI, inspect prompt metadata, then publish it into the feed only after review.</p>
-          <form action="/admin/generate" method="get" className="mt-5 grid gap-3 rounded-3xl border border-slate-800 bg-black p-4 md:grid-cols-[1fr_180px_auto]">
+          <form action={generateContentDraftAction} className="mt-5 grid gap-3 rounded-3xl border border-slate-800 bg-black p-4 md:grid-cols-[1fr_180px_auto]">
             <label className="grid gap-2 text-sm font-black text-slate-300">
               Draft theme
               <input name="theme" className="rounded-full border border-slate-700 bg-black px-4 py-2 font-medium text-white outline-none focus:border-tw-blue" placeholder="Model gateway launch checklist" />
@@ -72,8 +54,8 @@ export default async function GeneratedContentAdminPage({
                 <pre className="mt-2 whitespace-pre-wrap break-words">provider={draft.provider}{"\n"}model={draft.model}{"\n"}metadata={JSON.stringify(draft.metadata)}{"\n\n"}{draft.prompt}</pre>
               </details>
               {draft.status === "draft" ? (
-                <form action="/admin/generate" method="get" className="mt-4">
-                  <input type="hidden" name="publishDraft" value={draft.id} />
+                <form action={publishContentDraftAction} className="mt-4">
+                  <input type="hidden" name="draftId" value={draft.id} />
                   <button className="rounded-full bg-white px-5 py-2 text-sm font-black text-black">Publish to feed</button>
                 </form>
               ) : (

@@ -63,6 +63,16 @@ export function createSocialTextureState(): SocialTextureState {
   return { replies: [], reactions: [], pollVotes: [], quotePosts: [], notifications: [] };
 }
 
+export function createSocialTextureStateFromRows(state: SocialTextureState): SocialTextureState {
+  return {
+    replies: [...state.replies],
+    reactions: [...state.reactions],
+    pollVotes: [...state.pollVotes],
+    quotePosts: [...state.quotePosts],
+    notifications: [...state.notifications]
+  };
+}
+
 function notificationId(kind: string, id: string) {
   return `${kind}:${id}`;
 }
@@ -164,7 +174,7 @@ function distinctLearnerCountForPost(state: SocialTextureState, postId: string) 
   ]).size;
 }
 
-export function buildSocialActivitySummary(state: SocialTextureState, posts: Pick<Post, "id" | "body">[]): SocialActivitySummary {
+export function buildSocialActivitySummary(state: SocialTextureState, posts: Pick<Post, "id" | "body">[], learnerId?: string): SocialActivitySummary {
   const metricsByPostId = Object.fromEntries(posts.map((post) => [post.id, countForPost(state, post.id)]));
   const activePosts = posts
     .map((post) => ({ post, metrics: metricsByPostId[post.id] }))
@@ -173,10 +183,16 @@ export function buildSocialActivitySummary(state: SocialTextureState, posts: Pic
     .sort((a, b) => b.score - a.score)
     .slice(0, 4);
 
+  const privateActivity = learnerId
+    ? {
+        notifications: state.notifications.filter((notification) => notification.learnerId === learnerId),
+        quotePosts: state.quotePosts.filter((quotePost) => quotePost.learnerId === learnerId)
+      }
+    : { notifications: state.notifications, quotePosts: state.quotePosts };
+
   return {
     metricsByPostId,
-    notifications: state.notifications,
-    quotePosts: state.quotePosts,
+    ...privateActivity,
     trendingConfusions: activePosts.map(({ post }) => [labelCount(distinctLearnerCountForPost(state, post.id)), post.body.split("\n")[0]] as [string, string])
   };
 }

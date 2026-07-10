@@ -19,7 +19,7 @@ import {
   type LearnerMemoryState,
   type LearnerMemorySummary
 } from "@/lib/learner-memory";
-import { buildSeedRows, demoLearnerId } from "@/lib/seed-data";
+import { buildSeedRows } from "@/lib/seed-data";
 
 export type LearnerMemoryPost = {
   id: string;
@@ -42,11 +42,12 @@ export type LearnerMemoryPageData = {
 };
 
 function assembleLearnerMemoryPageData(
+  learnerId: string,
   state: LearnerMemoryState,
   postRows: { id: string; tutorId: string; body: string; sortOrder: number }[],
   tutorRows: { id: string; name: string; handle: string; avatarUrl: string; profileHeadline: string }[]
 ): LearnerMemoryPageData {
-  const summary = summarizeLearnerMemory(state, demoLearnerId);
+  const summary = summarizeLearnerMemory(state, learnerId);
   const tutorsById = new Map(tutorRows.map((tutor) => [tutor.id, tutor]));
   const postsById = new Map(postRows.map((post) => [post.id, post]));
 
@@ -74,24 +75,25 @@ function assembleLearnerMemoryPageData(
   };
 }
 
-export async function getLearnerMemoryPageData(): Promise<LearnerMemoryPageData> {
+export async function getLearnerMemoryPageData(learnerId: string): Promise<LearnerMemoryPageData> {
   if (!getDatabaseUrl()) {
     const seed = buildSeedRows({ tutors: seedTutors, posts: seedPosts });
-    return assembleLearnerMemoryPageData(getFallbackLearnerMemoryState(), seed.posts, seed.tutors);
+    return assembleLearnerMemoryPageData(learnerId, getFallbackLearnerMemoryState(), seed.posts, seed.tutors);
   }
 
   const db = getDb();
   const [learnerRows, followRows, savedRows, learningStateRows, privateNoteRows, postRows, tutorRows] = await Promise.all([
-    db.select().from(learners).where(eq(learners.id, demoLearnerId)),
-    db.select().from(tutorFollows).where(eq(tutorFollows.learnerId, demoLearnerId)),
-    db.select().from(learnerSavedPosts).where(eq(learnerSavedPosts.learnerId, demoLearnerId)),
-    db.select().from(learnerLearningStates).where(eq(learnerLearningStates.learnerId, demoLearnerId)),
-    db.select().from(learnerPrivateNotes).where(eq(learnerPrivateNotes.learnerId, demoLearnerId)).orderBy(asc(learnerPrivateNotes.createdAt)),
+    db.select().from(learners).where(eq(learners.id, learnerId)),
+    db.select().from(tutorFollows).where(eq(tutorFollows.learnerId, learnerId)),
+    db.select().from(learnerSavedPosts).where(eq(learnerSavedPosts.learnerId, learnerId)),
+    db.select().from(learnerLearningStates).where(eq(learnerLearningStates.learnerId, learnerId)),
+    db.select().from(learnerPrivateNotes).where(eq(learnerPrivateNotes.learnerId, learnerId)).orderBy(asc(learnerPrivateNotes.createdAt)),
     db.select().from(posts).orderBy(asc(posts.sortOrder)),
     db.select().from(tutors).orderBy(asc(tutors.name))
   ]);
 
   return assembleLearnerMemoryPageData(
+    learnerId,
     createSeedLearnerMemoryState({
       learners: learnerRows,
       follows: followRows,
@@ -104,7 +106,7 @@ export async function getLearnerMemoryPageData(): Promise<LearnerMemoryPageData>
   );
 }
 
-export async function addLearnerPrivateMemoryNote(body: string) {
+export async function addLearnerPrivateMemoryNote(learnerId: string, body: string) {
   const trimmed = body.trim();
   if (!trimmed) return;
 
@@ -115,7 +117,7 @@ export async function addLearnerPrivateMemoryNote(body: string) {
 
   await getDb().insert(learnerPrivateNotes).values({
     id: randomUUID(),
-    learnerId: demoLearnerId,
+    learnerId,
     body: trimmed
   });
 }

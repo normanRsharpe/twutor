@@ -1,13 +1,15 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgEnum,
   pgTable,
   primaryKey,
   text,
-  timestamp
+  timestamp,
+  uniqueIndex
 } from "drizzle-orm/pg-core";
 
 export const postKindEnum = pgEnum("post_kind", ["text", "diagram", "quote", "poll", "trace", "challenge"]);
@@ -31,8 +33,67 @@ export const agenticFeedMoveEnum = pgEnum("agentic_feed_move", [
 ]);
 export const agenticNoveltyLevelEnum = pgEnum("agentic_novelty_level", ["familiar", "adjacent", "stretch", "leap"]);
 
+export const authUsers = pgTable("auth_users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  image: text("image"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" })
+  },
+  (table) => ({ userIdIdx: index("auth_sessions_user_id_idx").on(table.userId) })
+);
+
+export const authAccounts = pgTable(
+  "auth_accounts",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => ({ userIdIdx: index("auth_accounts_user_id_idx").on(table.userId) })
+);
+
+export const authVerifications = pgTable(
+  "auth_verifications",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => ({ identifierIdx: index("auth_verifications_identifier_idx").on(table.identifier) })
+);
+
 export const learners = pgTable("learners", {
   id: text("id").primaryKey(),
+  authUserId: text("auth_user_id").unique().references(() => authUsers.id),
   name: text("name").notNull(),
   handle: text("handle").notNull().unique(),
   avatarUrl: text("avatar_url").notNull(),
@@ -102,6 +163,53 @@ export const learnerPrivateNotes = pgTable("learner_private_notes", {
   id: text("id").primaryKey(),
   learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
   body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const socialReplies = pgTable("social_replies", {
+  id: text("id").primaryKey(),
+  learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+  postId: text("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const socialReactions = pgTable(
+  "social_reactions",
+  {
+    id: text("id").primaryKey(),
+    learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+    postId: text("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+    reactionType: text("reaction_type", { enum: ["repost", "check"] }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => ({ learnerPostReactionUnique: uniqueIndex("social_reactions_learner_post_reaction_unique").on(table.learnerId, table.postId, table.reactionType) })
+);
+
+export const socialPollVotes = pgTable(
+  "social_poll_votes",
+  {
+    learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+    postId: text("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+    optionPosition: integer("option_position").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => ({ learnerPostPk: primaryKey({ columns: [table.learnerId, table.postId] }) })
+);
+
+export const socialQuotePosts = pgTable("social_quote_posts", {
+  id: text("id").primaryKey(),
+  learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+  postId: text("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const socialNotifications = pgTable("social_notifications", {
+  id: text("id").primaryKey(),
+  learnerId: text("learner_id").notNull().references(() => learners.id, { onDelete: "cascade" }),
+  postId: text("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });
 

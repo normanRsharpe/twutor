@@ -1,4 +1,6 @@
 import { createAskTutorThreadFromQuestion, listAskTutorThreads, type AskTutorThreadView } from "@/lib/ask-tutor-queries";
+import { localDemoModeEnabled, requireCurrentLearner } from "@/lib/auth/server";
+import { getDatabaseUrl } from "@/lib/db/client";
 
 export const dynamic = "force-dynamic";
 
@@ -6,15 +8,17 @@ function normalizeSearchValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export default async function TutorRepliesPage({ searchParams }: { searchParams: Promise<{ question?: string | string[] }> }) {
+export default async function TutorRepliesPage({ searchParams }: { searchParams: Promise<{ thread?: string | string[]; question?: string | string[] }> }) {
+  const learner = await requireCurrentLearner();
   const params = await searchParams;
-  const askedQuestion = normalizeSearchValue(params.question)?.trim();
-  const createdThread = askedQuestion ? await createAskTutorThreadFromQuestion(askedQuestion) : null;
-  const storedThreads = await listAskTutorThreads();
-  const threads: AskTutorThreadView[] = createdThread
+  const localQuestion = localDemoModeEnabled() && !getDatabaseUrl() ? normalizeSearchValue(params.question)?.trim() : undefined;
+  const localThread = localQuestion ? await createAskTutorThreadFromQuestion(localQuestion, learner.id) : null;
+  const selectedThreadId = localThread?.id ?? normalizeSearchValue(params.thread)?.trim();
+  const storedThreads = await listAskTutorThreads(learner.id);
+  const threads: AskTutorThreadView[] = selectedThreadId
     ? [
-        ...storedThreads.filter((thread) => thread.id === createdThread.id),
-        ...storedThreads.filter((thread) => thread.id !== createdThread.id)
+        ...storedThreads.filter((thread) => thread.id === selectedThreadId),
+        ...storedThreads.filter((thread) => thread.id !== selectedThreadId)
       ]
     : storedThreads;
 

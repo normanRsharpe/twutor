@@ -1,9 +1,11 @@
 import { TwutorApp } from "@/components/twutor-app";
+import { requireCurrentLearner } from "@/lib/auth/server";
 import { getFeedData } from "@/lib/feed-queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function SavedPage() {
-  const feedData = await getFeedData({ feed: "saved" });
-  return <TwutorApp feedData={feedData} mode="saved" />;
+  const learner = await requireCurrentLearner();
+  const feedData = await getFeedData({ learnerId: learner.id, feed: "saved" });
+  return <TwutorApp feedData={feedData} mode="saved" learnerIdentity={learner} />;
 }

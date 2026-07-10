@@ -1,4 +1,5 @@
 import { TwutorApp } from "@/components/twutor-app";
+import { requireCurrentLearner } from "@/lib/auth/server";
 import { resetFallbackAskTutorThreads } from "@/lib/ask-tutor-queries";
 import { getFeedData, type FeedKind } from "@/lib/feed-queries";
 import { resetFallbackGeneratedContentState } from "@/lib/generated-content-queries";
@@ -19,6 +20,7 @@ function isEnabled(value: string | string[] | undefined) {
 }
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ feed?: string | string[]; reset?: string | string[] }> }) {
+  const currentLearner = await requireCurrentLearner();
   const params = await searchParams;
   if (isEnabled(params.reset)) {
     resetFallbackLearnerMemoryState();
@@ -26,6 +28,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     resetFallbackGeneratedContentState();
     resetFallbackSocialTextureState();
   }
-  const feedData = await getFeedData({ feed: parseFeed(params.feed) });
-  return <TwutorApp feedData={feedData} />;
+  const feedData = await getFeedData({ learnerId: currentLearner.id, feed: parseFeed(params.feed) });
+  return <TwutorApp feedData={feedData} learnerIdentity={currentLearner} />;
 }
