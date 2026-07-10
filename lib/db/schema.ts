@@ -100,6 +100,18 @@ export const learners = pgTable("learners", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });
 
+export const learnerOnboardings = pgTable("learner_onboardings", {
+  learnerId: text("learner_id").primaryKey().references(() => learners.id, { onDelete: "cascade" }),
+  goal: text("goal"),
+  level: text("level"),
+  cadence: text("cadence"),
+  topics: text("topics").array().notNull().default([]),
+  tutorIds: text("tutor_ids").array().notNull().default([]),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  skippedAt: timestamp("skipped_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
 export const tutors = pgTable("tutors", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
