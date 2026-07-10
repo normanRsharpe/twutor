@@ -24,7 +24,7 @@ import {
   updateFallbackLearnerTutorFollow
 } from "@/lib/learner-memory";
 import { getFallbackGeneratedPostRows } from "@/lib/generated-content-queries";
-import { buildSeedRows, demoLearnerId, type SeedRows } from "@/lib/seed-data";
+import { buildSeedRows, type SeedRows } from "@/lib/seed-data";
 import { getSocialActivitySummary } from "@/lib/social-texture-queries";
 import type { SocialActivitySummary } from "@/lib/social-texture";
 
@@ -218,7 +218,7 @@ export function assembleTutorViews(
   ) as Record<TutorId, TutorView>;
 }
 
-function fallbackFeedData({ tutorId, feed = "for-you" }: { tutorId?: string; feed?: FeedKind }): FeedData {
+function fallbackFeedData({ learnerId, tutorId, feed = "for-you" }: { learnerId: string; tutorId?: string; feed?: FeedKind }): FeedData {
   const seed = buildSeedRows({ tutors: seedTutors, posts: seedPosts });
   const generatedPosts = getFallbackGeneratedPostRows();
   const learnerMemory = getFallbackLearnerMemoryState();
@@ -236,7 +236,7 @@ function fallbackFeedData({ tutorId, feed = "for-you" }: { tutorId?: string; fee
   const tutorViews = assembleTutorViews(memorySeed.tutors, memorySeed.follows, memorySeed.generatedAssets, memorySeed.posts);
   const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
   const feedPosts = assembleFeedPosts(memorySeed, new Set(memorySeed.savedPosts.map((saved) => saved.postId)));
-  const socialActivity = getSocialActivitySummary(feedPosts);
+  const socialActivity = getSocialActivitySummary(feedPosts, learnerId);
   const visiblePosts = applySocialMetrics(filterPostsForFeed(feedPosts, feed, followed).filter((post) => !tutorId || post.tutorId === tutorId), socialActivity);
 
   return {
@@ -249,15 +249,15 @@ function fallbackFeedData({ tutorId, feed = "for-you" }: { tutorId?: string; fee
   };
 }
 
-export async function getFeedData({ tutorId, feed = "for-you" }: { tutorId?: string; feed?: FeedKind } = {}): Promise<FeedData> {
-  if (!getDatabaseUrl()) return fallbackFeedData({ tutorId, feed });
+export async function getFeedData({ learnerId, tutorId, feed = "for-you" }: { learnerId: string; tutorId?: string; feed?: FeedKind }): Promise<FeedData> {
+  if (!getDatabaseUrl()) return fallbackFeedData({ learnerId, tutorId, feed });
 
   const db = getDb();
   const [tutorRows, followRows, savedRows, learningStateRows, assetRows, postRows, metricRows, diagramRows, quoteRows, pollRows, traceRows, challengeRows] = await Promise.all([
     db.select().from(tutors).orderBy(asc(tutors.name)),
-    db.select().from(tutorFollows).where(eq(tutorFollows.learnerId, demoLearnerId)),
-    db.select().from(learnerSavedPosts).where(eq(learnerSavedPosts.learnerId, demoLearnerId)),
-    db.select().from(learnerLearningStates).where(eq(learnerLearningStates.learnerId, demoLearnerId)),
+    db.select().from(tutorFollows).where(eq(tutorFollows.learnerId, learnerId)),
+    db.select().from(learnerSavedPosts).where(eq(learnerSavedPosts.learnerId, learnerId)),
+    db.select().from(learnerLearningStates).where(eq(learnerLearningStates.learnerId, learnerId)),
     db.select().from(generatedAssets).where(eq(generatedAssets.ownerType, "tutor")),
     tutorId
       ? db.select().from(posts).where(eq(posts.tutorId, tutorId)).orderBy(asc(posts.sortOrder))
@@ -285,7 +285,7 @@ export async function getFeedData({ tutorId, feed = "for-you" }: { tutorId?: str
   const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
 
   const assembledPosts = assembleFeedPosts(seedLike, new Set(savedRows.map((saved) => saved.postId)));
-  const socialActivity = getSocialActivitySummary(assembledPosts);
+  const socialActivity = getSocialActivitySummary(assembledPosts, learnerId);
 
   return {
     tutors: tutorViews,
@@ -297,8 +297,8 @@ export async function getFeedData({ tutorId, feed = "for-you" }: { tutorId?: str
   };
 }
 
-export async function getTutorProfile(tutorId: string) {
-  const feed = await getFeedData({ tutorId });
+export async function getTutorProfile(tutorId: string, learnerId: string) {
+  const feed = await getFeedData({ learnerId, tutorId });
   return feed.tutors[tutorId as TutorId] ? feed : null;
 }
 
@@ -308,35 +308,35 @@ export async function listTutorIds() {
   return (await db.select({ id: tutors.id }).from(tutors)).map((row) => row.id);
 }
 
-export async function setTutorFollow(tutorId: string, follow: boolean) {
+export async function setTutorFollow(learnerId: string, tutorId: string, follow: boolean) {
   if (!getDatabaseUrl()) {
     updateFallbackLearnerTutorFollow(tutorId, follow);
     return;
   }
   const db = getDb();
   if (follow) {
-    await db.insert(tutorFollows).values({ learnerId: demoLearnerId, tutorId }).onConflictDoNothing();
+    await db.insert(tutorFollows).values({ learnerId, tutorId }).onConflictDoNothing();
   } else {
-    await db.delete(tutorFollows).where(and(eq(tutorFollows.learnerId, demoLearnerId), eq(tutorFollows.tutorId, tutorId)));
+    await db.delete(tutorFollows).where(and(eq(tutorFollows.learnerId, learnerId), eq(tutorFollows.tutorId, tutorId)));
   }
 }
 
-export async function recordPostFeedEvent(postId: string, eventType: FeedEventType, metadata: Record<string, unknown> = { surface: "feed" }) {
+export async function recordPostFeedEvent(learnerId: string, postId: string, eventType: FeedEventType, metadata: Record<string, unknown> = { surface: "feed" }) {
   if (!getDatabaseUrl()) return;
   const db = getDb();
-  await db.insert(feedEvents).values(createFeedEventRow({ learnerId: demoLearnerId, postId, eventType, metadata }));
+  await db.insert(feedEvents).values(createFeedEventRow({ learnerId, postId, eventType, metadata }));
 }
 
-export async function setPostSaved(postId: string, saved: boolean) {
+export async function setPostSaved(learnerId: string, postId: string, saved: boolean) {
   if (!getDatabaseUrl()) {
     updateFallbackLearnerPostSaved(postId, saved);
     return;
   }
   const db = getDb();
   if (saved) {
-    await db.insert(learnerSavedPosts).values({ learnerId: demoLearnerId, postId }).onConflictDoNothing();
+    await db.insert(learnerSavedPosts).values({ learnerId, postId }).onConflictDoNothing();
   } else {
-    await db.delete(learnerSavedPosts).where(and(eq(learnerSavedPosts.learnerId, demoLearnerId), eq(learnerSavedPosts.postId, postId)));
+    await db.delete(learnerSavedPosts).where(and(eq(learnerSavedPosts.learnerId, learnerId), eq(learnerSavedPosts.postId, postId)));
   }
-  await recordPostFeedEvent(postId, saved ? "saved" : "unsaved", { surface: "feed", saved });
+  await recordPostFeedEvent(learnerId, postId, saved ? "saved" : "unsaved", { surface: "feed", saved });
 }

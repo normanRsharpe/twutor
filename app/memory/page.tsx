@@ -1,10 +1,12 @@
 import { savePrivateLearnerNote } from "@/app/memory/actions";
+import { requireCurrentLearner } from "@/lib/auth/server";
 import { getLearnerMemoryPageData } from "@/lib/learner-memory-queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function LearnerMemoryPage() {
-  const { summary, savedPosts, followedTutors } = await getLearnerMemoryPageData();
+  const learner = await requireCurrentLearner();
+  const { summary, savedPosts, followedTutors } = await getLearnerMemoryPageData(learner.id);
 
   return (
     <main className="min-h-screen bg-black px-5 py-8 text-[#e7e9ea]">

@@ -28,6 +28,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     resetFallbackGeneratedContentState();
     resetFallbackSocialTextureState();
   }
-  const feedData = await getFeedData({ feed: parseFeed(params.feed) });
+  const feedData = await getFeedData({ learnerId: currentLearner.id, feed: parseFeed(params.feed) });
   return <TwutorApp feedData={feedData} learnerIdentity={currentLearner} />;
 }

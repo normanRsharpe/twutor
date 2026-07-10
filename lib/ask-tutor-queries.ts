@@ -4,7 +4,6 @@ import { tutors as seedTutors, type TutorId } from "@/data/twutor";
 import { createAskTutorThread, type AskTutorResponseDraft, type AskTutorThread } from "@/lib/ask-tutors";
 import { getDatabaseUrl, getDb } from "@/lib/db/client";
 import { askTutorQuestions, askTutorResponses, tutors } from "@/lib/db/schema";
-import { demoLearnerId } from "@/lib/seed-data";
 import { getTwutorAIClient } from "@/lib/twutor-ai";
 
 export type AskTutorResponseView = AskTutorResponseDraft & {
@@ -52,7 +51,7 @@ function attachTutorViews(threads: AskTutorThread[]): AskTutorThreadView[] {
   }));
 }
 
-export async function createAskTutorThreadFromQuestion(question: string, learnerId = demoLearnerId) {
+export async function createAskTutorThreadFromQuestion(question: string, learnerId: string) {
   const thread = await createAskTutorThread({
     learnerId,
     question,

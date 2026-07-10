@@ -6,6 +6,6 @@ export const dynamic = "force-dynamic";
 
 export default async function TutorsPage() {
   const learner = await requireCurrentLearner();
-  const feedData = await getFeedData();
+  const feedData = await getFeedData({ learnerId: learner.id });
   return <TwutorApp feedData={feedData} mode="tutors" learnerIdentity={learner} />;
 }

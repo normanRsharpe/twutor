@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function TutorPage({ params }: { params: Promise<{ id: string }> }) {
   const learner = await requireCurrentLearner();
   const { id } = await params;
-  const feedData = await getTutorProfile(id);
+  const feedData = await getTutorProfile(id, learner.id);
 
   if (!feedData) notFound();
 
