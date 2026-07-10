@@ -106,6 +106,10 @@ See [`docs/authentication.md`](docs/authentication.md) for Better Auth, learner 
 
 See [`docs/agentic-posting.md`](docs/agentic-posting.md) for the learner-signal → brief → intent → pacing → admin review → publish/feedback workflow.
 
+## Production operations
+
+See [`docs/operations.md`](docs/operations.md) for health checks, deployment smoke verification, structured failure events, monitoring, and the backup/restore rehearsal.
+
 ## Next milestone
 
 See [`docs/next-milestone.md`](docs/next-milestone.md) for the original Railway Postgres + Drizzle plan.
