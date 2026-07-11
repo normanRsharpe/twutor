@@ -38,6 +38,10 @@ export function buildGeneratedPostId(draft: Pick<GeneratedContentDraft, "id" | "
   return `generated-${slug(draft.theme)}-${slug(draft.id)}`;
 }
 
+export function buildContentBriefOptions(briefs: Array<{ id: string; theme: string; objective: string; updatedAt: Date }>) {
+  return briefs.map((brief) => ({ value: brief.id, label: brief.theme, description: brief.objective }));
+}
+
 export type GeneratedPostRow = {
   id: string;
   tutorId: TutorId;

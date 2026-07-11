@@ -6,9 +6,9 @@ import { getTutorResponseLabel } from "@/lib/ask-tutors";
 export const dynamic = "force-dynamic";
 
 export default async function GeneratedContentAdminPage() {
-  await requireAdminLearner();
+  const learner = await requireAdminLearner();
 
-  const { rows } = await getGeneratedContentAdminData();
+  const { rows, briefOptions } = await getGeneratedContentAdminData(learner.id);
 
   return (
     <main className="min-h-screen bg-black px-5 py-8 text-[#e7e9ea]">
@@ -32,9 +32,16 @@ export default async function GeneratedContentAdminPage() {
                 <option value="challenge">challenge</option>
               </select>
             </label>
-            <label className="grid gap-2 text-sm font-black text-slate-300">Source brief ID<input name="sourceBriefId" className="rounded-full border border-slate-700 bg-black px-4 py-2 font-medium text-white" placeholder="brief-id" /></label>
-            <label className="grid gap-2 text-sm font-black text-slate-300">Reviewed brief summary<textarea name="briefSummary" className="rounded-2xl border border-slate-700 bg-black px-4 py-2 font-medium text-white" required /></label>
-            <button className="self-end rounded-full bg-tw-blue px-5 py-2 font-black text-white md:col-span-2">Generate 2 candidates</button>
+            <label className="grid gap-2 text-sm font-black text-slate-300 md:col-span-2">
+              Content brief
+              {briefOptions.length ? (
+                <select name="sourceBriefId" required className="rounded-2xl border border-slate-700 bg-black px-4 py-3 font-medium text-white outline-none focus:border-tw-blue">
+                  <option value="">Choose reviewed research…</option>
+                  {briefOptions.map((brief) => <option key={brief.value} value={brief.value}>{brief.label} — {brief.description}</option>)}
+                </select>
+              ) : <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 font-medium text-amber-100">No active content briefs yet. Create or activate a research brief before generating feed candidates.</div>}
+            </label>
+            <button disabled={!briefOptions.length} className="self-end rounded-full bg-tw-blue px-5 py-2 font-black text-white disabled:cursor-not-allowed disabled:opacity-40 md:col-span-2">Generate 2 candidates</button>
           </form>
         </header>
 

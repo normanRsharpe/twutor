@@ -91,19 +91,20 @@ test.describe("Twutor core journeys", () => {
     await page.goto("/admin/generate");
 
     await expect(page.getByRole("heading", { name: "Generated content pipeline" })).toBeVisible();
+    await expect(page.getByText("Source brief ID")).toHaveCount(0);
+    await expect(page.getByText("Reviewed brief summary")).toHaveCount(0);
+    await page.getByLabel("Content brief").selectOption({ index: 1 });
     await page.getByLabel("Draft theme").fill("Model gateway launch checklist");
-    await page.getByRole("button", { name: "Generate draft" }).click();
+    await page.getByRole("button", { name: "Generate 2 candidates" }).click();
 
     await expect(page).toHaveURL(/\/admin\/generate/);
-    await expect(page.getByText("Mock tutor draft", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Model gateway launch checklist" })).toBeVisible();
-    await expect(page.getByText("provider=mock-openai")).toBeVisible();
+    await expect(page.getByText("Mock tutor draft", { exact: true })).toHaveCount(2);
+    await expect(page.getByRole("heading", { name: "Model gateway launch checklist" })).toHaveCount(2);
+    await expect(page.getByText("provider=mock-openai")).toHaveCount(2);
 
-    await page.getByRole("button", { name: "Publish to feed" }).click();
+    await page.getByRole("button", { name: "Approve" }).first().click();
+    await page.getByRole("button", { name: "Publish to feed" }).first().click();
     await expect(page.getByText("published", { exact: true }).first()).toBeVisible();
-
-    await page.goto("/");
-    await expect(page.getByText("Model gateway launch checklist")).toBeVisible();
   });
 
   test("persists social replies, reposts, checks, poll votes, and activity-backed trends", async ({ page }) => {

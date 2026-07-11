@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { posts, tutors } from "@/data/twutor";
 import {
+  buildContentBriefOptions,
   buildGeneratedContentAdminRows,
   buildGeneratedPostId,
   createGeneratedContentCandidates,
@@ -20,6 +21,10 @@ const baseInput = {
 };
 
 describe("generated content pipeline", () => {
+  it("presents active content briefs as readable choices without exposing plumbing", () => {
+    expect(buildContentBriefOptions([{ id: "brief-1", theme: "Model gateway readiness", objective: "Teach the production checks", updatedAt: new Date("2026-07-11T12:00:00Z") }])).toEqual([{ value: "brief-1", label: "Model gateway readiness", description: "Teach the production checks" }]);
+  });
+
   it("generates reviewable variants with source brief and audit metadata", async () => {
     let id = 0;
     const drafts = await createGeneratedContentCandidates({ ...baseInput, variantCount: 2, idGenerator: () => `draft-${++id}` });

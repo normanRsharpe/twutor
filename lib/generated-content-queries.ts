@@ -4,6 +4,7 @@ import { posts as seedPosts, tutors as seedTutors, type TutorId } from "@/data/t
 import { getDatabaseUrl, getDb } from "@/lib/db/client";
 import { contentBriefs, generatedContentDrafts, postMetrics, posts, tutors } from "@/lib/db/schema";
 import {
+  buildContentBriefOptions,
   buildGeneratedContentAdminRows,
   buildGeneratedPostId,
   createGeneratedContentCandidates,
@@ -15,6 +16,7 @@ import {
   type GeneratedPostRow
 } from "@/lib/generated-content";
 import { getTwutorAIClient } from "@/lib/twutor-ai";
+import { buildSeedRows } from "@/lib/seed-data";
 
 let fallbackDrafts: GeneratedContentDraft[] = [];
 let fallbackGeneratedPosts: GeneratedPostRow[] = [];
@@ -55,21 +57,23 @@ export async function generateAdminContentDraft({
   kind = "diagram",
   theme,
   sourceBriefId = null,
-  briefSummary,
   editorLearnerId
 }: {
   tutorId?: TutorId;
   kind?: GeneratedContentKind;
   theme: string;
   sourceBriefId?: string | null;
-  briefSummary?: string;
   editorLearnerId?: string;
 }) {
   const tutor = seedTutors[tutorId];
-  let reviewedBriefSummary = briefSummary;
+  if (!sourceBriefId || !editorLearnerId) throw new Error("Select an active content brief");
+  let reviewedBriefSummary: string;
   if (getDatabaseUrl()) {
-    if (!sourceBriefId || !editorLearnerId) throw new Error("An active owned content brief is required");
     const [brief] = await getDb().select().from(contentBriefs).where(and(eq(contentBriefs.id, sourceBriefId), eq(contentBriefs.learnerId, editorLearnerId), eq(contentBriefs.status, "active")));
+    if (!brief) throw new Error("Active content brief not found for this editor");
+    reviewedBriefSummary = `${brief.objective}\n${brief.learnerContextSnapshot}`;
+  } else {
+    const brief = buildSeedRows({ tutors: seedTutors, posts: seedPosts }).contentBriefs.find((candidate) => candidate.id === sourceBriefId && candidate.learnerId === editorLearnerId && candidate.status === "active");
     if (!brief) throw new Error("Active content brief not found for this editor");
     reviewedBriefSummary = `${brief.objective}\n${brief.learnerContextSnapshot}`;
   }
@@ -141,23 +145,26 @@ export async function publishAdminGeneratedContentDraft(draftId: string) {
   return published;
 }
 
-export async function getGeneratedContentAdminData(): Promise<{ rows: GeneratedContentAdminRow[] }> {
+export async function getGeneratedContentAdminData(learnerId: string): Promise<{ rows: GeneratedContentAdminRow[]; briefOptions: ReturnType<typeof buildContentBriefOptions> }> {
   if (!getDatabaseUrl()) {
+    const briefs = buildSeedRows({ tutors: seedTutors, posts: seedPosts }).contentBriefs.filter((brief) => brief.learnerId === learnerId && brief.status === "active");
     return {
       rows: buildGeneratedContentAdminRows({
         drafts: fallbackDrafts,
         tutors: seedTutors,
         posts: [...fallbackGeneratedPosts, ...seedPosts]
-      })
+      }),
+      briefOptions: buildContentBriefOptions(briefs.map((brief) => ({ ...brief, updatedAt: brief.updatedAt ?? new Date(0) })))
     };
   }
 
-  const [draftRows, tutorRows, postRows] = await Promise.all([
+  const [draftRows, tutorRows, postRows, briefRows] = await Promise.all([
     getDb().select().from(generatedContentDrafts),
     getDb().select().from(tutors),
-    getDb().select().from(posts).orderBy(asc(posts.sortOrder))
+    getDb().select().from(posts).orderBy(asc(posts.sortOrder)),
+    getDb().select().from(contentBriefs).where(and(eq(contentBriefs.learnerId, learnerId), eq(contentBriefs.status, "active")))
   ]);
 
   const tutorRecord = Object.fromEntries(tutorRows.map((tutor) => [tutor.id, { id: tutor.id as TutorId, name: tutor.name, handle: tutor.handle, avatar: tutor.avatarUrl, angle: tutor.angle }])) as typeof seedTutors;
-  return { rows: buildGeneratedContentAdminRows({ drafts: draftRows.map(toDraft), tutors: tutorRecord, posts: postRows }) };
+  return { rows: buildGeneratedContentAdminRows({ drafts: draftRows.map(toDraft), tutors: tutorRecord, posts: postRows }), briefOptions: buildContentBriefOptions(briefRows) };
 }

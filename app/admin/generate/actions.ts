@@ -19,7 +19,6 @@ export async function generateContentDraftAction(formData: FormData) {
     kind: generatedKinds.has(requestedKind) ? requestedKind : "diagram",
     tutorId: "maya",
     sourceBriefId: String(formData.get("sourceBriefId") ?? "").trim().slice(0, 200) || null,
-    briefSummary: String(formData.get("briefSummary") ?? "").trim().slice(0, 2000) || undefined,
     editorLearnerId: learner.id
   });
   for (const draft of drafts) await recordAdminAuditEvent({ actorAuthUserId: learner.authUserId, action: "generate", targetType: "generated_content_draft", targetId: draft.id, outcome: "success", metadata: { kind: draft.kind, variantIndex: draft.variantIndex } });
