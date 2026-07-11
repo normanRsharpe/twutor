@@ -63,20 +63,28 @@ describe("Twutor AI runtime", () => {
     expect(JSON.stringify(writeEvent.mock.calls)).not.toContain(tutorInput.prompt);
   });
 
-  it("returns a recoverable result and failure event when the provider times out", async () => {
+  it("retries a transient timeout before returning a tutor result", async () => {
     const writeEvent = vi.fn();
-    const fetchImplementation = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
-      expect(init?.signal).toBeInstanceOf(AbortSignal);
-      throw new DOMException("timed out", "AbortError");
+    const fetchImplementation = vi.fn()
+      .mockRejectedValueOnce(new DOMException("timed out", "AbortError"))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        choices: [{ message: { content: JSON.stringify({ body: "Recovered after a transient timeout." }) } }],
+        usage: { total_tokens: 20 }
+      }), { status: 200 }));
+    const client = createOpenAITwutorAIClient({
+      apiKey: "test-secret",
+      fetchImplementation,
+      writeEvent,
+      sleep: async () => undefined,
+      maxAttempts: 2
     });
-    const client = createOpenAITwutorAIClient({ apiKey: "test-secret", fetchImplementation, writeEvent });
 
     await expect(client.generateTutorResponse(tutorInput)).resolves.toMatchObject({
       provider: "openai",
-      body: expect.stringContaining("saved your question"),
-      metadata: { outcome: "failure", errorCode: "AI_TIMEOUT", retryable: true }
+      body: "Recovered after a transient timeout.",
+      metadata: { outcome: "success" }
     });
-    expect(writeEvent).toHaveBeenCalledWith(expect.objectContaining({ outcome: "failure", errorCode: "AI_TIMEOUT" }));
+    expect(fetchImplementation).toHaveBeenCalledTimes(2);
   });
 
   it("retries a rate limit and returns a recoverable provider failure", async () => {

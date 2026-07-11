@@ -11,6 +11,7 @@ export type AskTutorResponseDraft = {
   followUpPrompt: string;
   provider: string;
   model: string;
+  metadata: Record<string, unknown>;
   prompt: string;
   createdAt: Date;
 };
@@ -23,6 +24,18 @@ export type AskTutorThread = {
   createdAt: Date;
   responses: AskTutorResponseDraft[];
 };
+
+export function getTutorResponseLabel(response: Pick<AskTutorResponseDraft, "provider" | "metadata">) {
+  if (response.metadata.outcome === "failure") return "AI temporarily unavailable";
+  if (response.metadata.mocked === true) return "Mock tutor draft";
+  if (response.metadata.outcome !== "success") return "AI draft · outcome unknown";
+  return "Live AI draft";
+}
+
+export function getTutorResponseMetadataSummary(metadata: Record<string, unknown>) {
+  const allowedKeys = ["outcome", "errorCode", "promptVersion", "latencyMs", "inputTokens", "outputTokens", "totalTokens", "estimatedCostUsd", "retryable"] as const;
+  return Object.fromEntries(allowedKeys.filter((key) => key in metadata).map((key) => [key, metadata[key]]));
+}
 
 export function selectTutorForQuestion(question: string, tutors: Record<TutorId, Tutor>): Tutor {
   const normalized = question.toLowerCase();
@@ -93,6 +106,7 @@ export async function createAskTutorThread({
         followUpPrompt: "Ask a follow-up or turn this into a build-lab challenge.",
         provider: generation.provider,
         model: generation.model,
+        metadata: generation.metadata ?? { mocked: generation.provider === "mock-openai" },
         prompt,
         createdAt
       }

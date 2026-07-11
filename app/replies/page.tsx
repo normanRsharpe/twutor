@@ -1,4 +1,5 @@
 import { createAskTutorThreadFromQuestion, listAskTutorThreads, type AskTutorThreadView } from "@/lib/ask-tutor-queries";
+import { getTutorResponseLabel, getTutorResponseMetadataSummary } from "@/lib/ask-tutors";
 import { localDemoModeEnabled, requireCurrentLearner } from "@/lib/auth/server";
 import { getDatabaseUrl } from "@/lib/db/client";
 
@@ -29,7 +30,7 @@ export default async function TutorRepliesPage({ searchParams }: { searchParams:
         <header className="mt-5 rounded-[32px] border border-tw-border bg-gradient-to-br from-slate-950 to-black p-6">
           <div className="text-xs font-black uppercase tracking-[0.18em] text-tw-blue">Ask Tutors</div>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-white">Tutor Replies</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-snug text-slate-400">Questions become reviewable tutor threads first: mocked OpenAI drafts, guardrails, and a follow-up affordance before anything turns into a public post.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-snug text-slate-400">Questions become reviewable tutor threads with provider-aware status, guardrails, and a follow-up affordance before anything turns into a public post.</p>
         </header>
 
         <section className="mt-5 grid gap-5">
@@ -46,7 +47,7 @@ export default async function TutorRepliesPage({ searchParams }: { searchParams:
                         <div className="font-black text-white">{response.tutorName}</div>
                         <div className="text-sm text-tw-muted">{response.tutorHandle} · {response.status}</div>
                       </div>
-                      <span className="ml-auto rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-black text-emerald-200">Mocked OpenAI draft</span>
+                      <span className="ml-auto rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-black text-emerald-200">{getTutorResponseLabel(response)}</span>
                     </div>
                     <p className="mt-4 whitespace-pre-line text-[16px] leading-snug text-slate-100">{response.body}</p>
                     <div className="mt-4 rounded-2xl border border-slate-800 bg-black p-3">
@@ -58,7 +59,7 @@ export default async function TutorRepliesPage({ searchParams }: { searchParams:
                     <div className="mt-4 rounded-2xl border border-tw-blue/40 bg-tw-blue/10 p-3 text-sm font-bold text-sky-100">{response.followUpPrompt}</div>
                     <details className="mt-3 rounded-2xl border border-slate-800 p-3 text-xs text-tw-muted">
                       <summary className="cursor-pointer font-black text-slate-300">Prompt metadata retained</summary>
-                      <pre className="mt-2 whitespace-pre-wrap break-words">provider={response.provider}\nmodel={response.model}\n\n{response.prompt}</pre>
+                      <pre className="mt-2 whitespace-pre-wrap break-words">provider={response.provider}\nmodel={response.model}\nmetadata={JSON.stringify(getTutorResponseMetadataSummary(response.metadata))}\n\n{response.prompt}</pre>
                     </details>
                   </section>
                 ))}

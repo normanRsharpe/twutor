@@ -154,7 +154,6 @@ export function createOpenAITwutorAIClient(options: OpenAIClientOptions): Twutor
       } catch (error) {
         response = undefined;
         failure = error instanceof DOMException && error.name === "AbortError" ? "AI_TIMEOUT" : "AI_PROVIDER_FAILED";
-        if (failure === "AI_TIMEOUT") break;
       } finally {
         clearTimeout(timeout);
       }

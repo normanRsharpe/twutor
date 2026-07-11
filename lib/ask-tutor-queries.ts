@@ -85,6 +85,7 @@ export async function createAskTutorThreadFromQuestion(question: string, learner
         followUpPrompt: response.followUpPrompt,
         provider: response.provider,
         model: response.model,
+        metadata: response.metadata,
         prompt: response.prompt,
         createdAt: response.createdAt
       }))
@@ -120,6 +121,7 @@ export async function listAskTutorThreads(learnerId: string): Promise<AskTutorTh
       followUpPrompt: response.followUpPrompt,
       provider: response.provider,
       model: response.model,
+      metadata: response.metadata,
       prompt: response.prompt,
       createdAt: response.createdAt,
       tutorName: tutor?.name ?? response.tutorId,

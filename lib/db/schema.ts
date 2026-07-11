@@ -253,6 +253,7 @@ export const askTutorResponses = pgTable("ask_tutor_responses", {
   followUpPrompt: text("follow_up_prompt").notNull(),
   provider: text("provider").notNull(),
   model: text("model").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}).notNull(),
   prompt: text("prompt").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });

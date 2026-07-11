@@ -82,7 +82,7 @@ test.describe("Twutor core journeys", () => {
     await expect(page).toHaveURL(/\/replies/);
     await expect(page.getByRole("heading", { name: "Tutor Replies" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "How should I evaluate a model gateway before launch?" })).toBeVisible();
-    await expect(page.getByText("Mocked OpenAI draft", { exact: true })).toBeVisible();
+    await expect(page.getByText("Mock tutor draft", { exact: true })).toBeVisible();
     await expect(page.getByText("Start with the smallest eval that can block a bad launch")).toBeVisible();
     await expect(page.getByText("Ask a follow-up or turn this into a build-lab challenge.")).toBeVisible();
   });
@@ -95,7 +95,7 @@ test.describe("Twutor core journeys", () => {
     await page.getByRole("button", { name: "Generate draft" }).click();
 
     await expect(page).toHaveURL(/\/admin\/generate/);
-    await expect(page.getByText("Mocked OpenAI draft", { exact: true })).toBeVisible();
+    await expect(page.getByText("Mock tutor draft", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Model gateway launch checklist" })).toBeVisible();
     await expect(page.getByText("provider=mock-openai")).toBeVisible();
 

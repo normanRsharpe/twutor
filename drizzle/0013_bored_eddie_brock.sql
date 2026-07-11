@@ -1,0 +1,1 @@
+ALTER TABLE "ask_tutor_responses" ADD COLUMN "metadata" jsonb DEFAULT '{}'::jsonb NOT NULL;
