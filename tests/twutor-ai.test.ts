@@ -30,6 +30,8 @@ describe("Twutor AI runtime", () => {
     const writeEvent = vi.fn();
     const fetchImplementation = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       expect(init?.headers).toMatchObject({ Authorization: "Bearer test-secret" });
+      const request = JSON.parse(String(init?.body)) as { model: string; reasoning_effort: string };
+      expect(request).toMatchObject({ model: "gpt-5.6-luna", reasoning_effort: "high" });
       return new Response(JSON.stringify({
         choices: [{ message: { content: JSON.stringify({ body: "Run a shadow evaluation before routing production traffic." }) } }],
         usage: { prompt_tokens: 21, completion_tokens: 9, total_tokens: 30 }
@@ -37,7 +39,6 @@ describe("Twutor AI runtime", () => {
     });
     const client = createOpenAITwutorAIClient({
       apiKey: "test-secret",
-      model: "gpt-4.1-mini",
       fetchImplementation,
       writeEvent,
       now: () => 1_000
@@ -45,7 +46,7 @@ describe("Twutor AI runtime", () => {
 
     await expect(client.generateTutorResponse(tutorInput)).resolves.toMatchObject({
       provider: "openai",
-      model: "gpt-4.1-mini",
+      model: "gpt-5.6-luna",
       body: "Run a shadow evaluation before routing production traffic.",
       metadata: { outcome: "success", promptVersion: "tutor-response-v1", totalTokens: 30 }
     });
@@ -54,7 +55,7 @@ describe("Twutor AI runtime", () => {
       event: "ai_invocation",
       outcome: "success",
       provider: "openai",
-      model: "gpt-4.1-mini",
+      model: "gpt-5.6-luna",
       promptVersion: "tutor-response-v1",
       totalTokens: 30
     }));

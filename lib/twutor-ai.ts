@@ -100,7 +100,7 @@ function writeAIEvent(event: AIInvocationEvent) {
 }
 
 export function createOpenAITwutorAIClient(options: OpenAIClientOptions): TwutorAIClient {
-  const model = options.model ?? "gpt-4.1-mini";
+  const model = options.model ?? "gpt-5.6-luna";
   const fetchImplementation = options.fetchImplementation ?? fetch;
   const writeEvent = options.writeEvent ?? writeAIEvent;
   const now = options.now ?? Date.now;
@@ -128,6 +128,7 @@ export function createOpenAITwutorAIClient(options: OpenAIClientOptions): Twutor
           },
           body: JSON.stringify({
             model,
+            reasoning_effort: "high",
             messages: [{ role: "user", content: boundedPrompt }],
             response_format: {
           type: "json_schema",
