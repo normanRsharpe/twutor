@@ -345,6 +345,10 @@ export const generatedContentDrafts = pgTable("generated_content_drafts", {
   model: text("model").notNull(),
   body: text("body").notNull(),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}).notNull(),
+  sourceBriefId: text("source_brief_id").references(() => contentBriefs.id, { onDelete: "set null" }),
+  variantIndex: integer("variant_index").default(0).notNull(),
+  reviewStatus: text("review_status").default("pending").notNull(),
+  revisionReason: text("revision_reason"),
   publishedPostId: text("published_post_id").references(() => posts.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()

@@ -2,45 +2,60 @@ import { describe, expect, it } from "vitest";
 import { posts, tutors } from "@/data/twutor";
 import {
   buildGeneratedContentAdminRows,
+  buildGeneratedPostId,
+  createGeneratedContentCandidates,
   createGeneratedContentDraft,
-  publishGeneratedContentDraft
+  publishGeneratedContentDraft,
+  reviewGeneratedContentDraft
 } from "@/lib/generated-content";
 import { createMockTwutorAIClient } from "@/lib/twutor-ai";
 
+const baseInput = {
+  tutor: tutors.maya,
+  kind: "diagram" as const,
+  theme: "Model gateway launch checklist",
+  sourceBriefId: "brief-1",
+  briefSummary: "Teach launch checks grounded in reviewed gateway research.",
+  aiClient: createMockTwutorAIClient()
+};
+
 describe("generated content pipeline", () => {
-  it("generates a reviewable draft with mocked OpenAI prompt metadata and publishes it into feed rows", async () => {
+  it("generates reviewable variants with source brief and audit metadata", async () => {
+    let id = 0;
+    const drafts = await createGeneratedContentCandidates({ ...baseInput, variantCount: 2, idGenerator: () => `draft-${++id}` });
+
+    expect(drafts).toHaveLength(2);
+    expect(drafts[0]).toMatchObject({ id: "draft-1", status: "draft", tutorId: "maya", kind: "diagram", sourceBriefId: "brief-1", variantIndex: 0, reviewStatus: "pending" });
+    expect(drafts[1]).toMatchObject({ id: "draft-2", variantIndex: 1 });
+    expect(drafts[0].prompt).toContain("Teach launch checks grounded in reviewed gateway research");
+    expect(drafts[0].metadata).toMatchObject({ mocked: true, promptVersion: "content-draft-v1" });
+    expect(buildGeneratedPostId(drafts[0])).not.toBe(buildGeneratedPostId(drafts[1]));
+  });
+
+  it("blocks provider failures and unsupported claims from review eligibility", async () => {
     const draft = await createGeneratedContentDraft({
-      tutor: tutors.maya,
-      kind: "diagram",
-      theme: "Model gateway launch checklist",
-      aiClient: createMockTwutorAIClient(),
-      idGenerator: () => "draft-1"
+      ...baseInput,
+      aiClient: {
+        async generateTutorResponse() { throw new Error("not used"); },
+        async generateContentDraft() { return { provider: "openai", model: "gpt-5.6-luna", body: "[unsupported] 99% of gateways fail.", metadata: { outcome: "failure", errorCode: "AI_PROVIDER_FAILED" } }; }
+      },
+      idGenerator: () => "failed-draft"
     });
 
-    expect(draft).toMatchObject({
-      id: "draft-1",
-      status: "draft",
-      tutorId: "maya",
-      kind: "diagram",
-      theme: "Model gateway launch checklist",
-      provider: "mock-openai",
-      model: "gpt-4.1-mini-mock"
-    });
-    expect(draft.prompt).toContain("Model gateway launch checklist");
-    expect(draft.metadata).toMatchObject({ mocked: true, kind: "diagram", tutorId: "maya" });
+    const row = buildGeneratedContentAdminRows({ drafts: [draft], tutors, posts })[0];
+    expect(row.publishBlocked).toBe(true);
+    expect(row.publishErrors).toEqual(expect.arrayContaining(["provider generation did not succeed", "draft contains unsupported claims"]));
+    expect(() => reviewGeneratedContentDraft(draft, { decision: "approved", revisionReason: null })).toThrow(/validation/i);
+  });
 
-    const adminRows = buildGeneratedContentAdminRows({ drafts: [draft], tutors, posts });
-    expect(adminRows[0]).toMatchObject({ id: "draft-1", tutorName: "Maya Chen", status: "draft", publishBlocked: false });
+  it("requires explicit approval before publishing and records review outcome", async () => {
+    const draft = await createGeneratedContentDraft({ ...baseInput, idGenerator: () => "draft-1" });
+    expect(() => publishGeneratedContentDraft(draft, { postId: "generated-model-gateway-launch", sortOrder: 99 })).toThrow(/approved/i);
 
-    const published = publishGeneratedContentDraft(draft, { postId: "generated-model-gateway-launch", sortOrder: 99 });
+    const approved = reviewGeneratedContentDraft(draft, { decision: "approved", revisionReason: "Grounded against brief-1" });
+    const published = publishGeneratedContentDraft(approved, { postId: "generated-model-gateway-launch", sortOrder: 99 });
 
-    expect(published.draft).toMatchObject({ status: "published", publishedPostId: "generated-model-gateway-launch" });
-    expect(published.post).toMatchObject({
-      id: "generated-model-gateway-launch",
-      tutorId: "maya",
-      kind: "diagram",
-      body: expect.stringContaining("Model gateway launch checklist"),
-      sortOrder: 99
-    });
+    expect(published.draft).toMatchObject({ status: "published", reviewStatus: "approved", revisionReason: "Grounded against brief-1" });
+    expect(published.post).toMatchObject({ id: "generated-model-gateway-launch", tutorId: "maya", kind: "diagram", sortOrder: 99 });
   });
 });
