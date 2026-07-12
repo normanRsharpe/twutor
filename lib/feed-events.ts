@@ -51,3 +51,7 @@ export function recordFeedEvent(existingEvents: FeedEventRow[], input: FeedEvent
 export function getSeenPostIdsFromEvents(events: Pick<FeedEventRow, "postId" | "eventType">[]) {
   return Array.from(new Set(events.filter((event) => seenEventTypes.has(event.eventType)).map((event) => event.postId)));
 }
+
+export function getHiddenPostIdsFromEvents(events: Pick<FeedEventRow, "postId" | "eventType">[]) {
+  return Array.from(new Set(events.filter((event) => event.eventType === "hidden" || event.eventType === "dismissed").map((event) => event.postId)));
+}

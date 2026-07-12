@@ -107,21 +107,46 @@ test.describe("Twutor core journeys", () => {
     await expect(page.getByText("published", { exact: true }).first()).toBeVisible();
   });
 
-  test("persists social replies, reposts, checks, poll votes, and activity-backed trends", async ({ page }) => {
+  test("persists reposts, checks, poll votes, and activity-backed trends", async ({ page }) => {
     await page.goto("/");
 
     const pollPost = page.locator("article").filter({ hasText: "Poll: your RAG bot is hallucinating" });
-    await pollPost.getByRole("button", { name: "Reply to post" }).click();
     await pollPost.getByRole("button", { name: "Repost post" }).click();
     await pollPost.getByRole("button", { name: "Check post" }).click();
-    await pollPost.getByRole("button", { name: "Quote tutor post" }).click();
     await pollPost.getByRole("button", { name: "Vote Retrieved context" }).click();
 
     await expect(page.getByText("Your poll vote was saved")).toBeVisible();
-    await expect(page.getByText("Your reply joined a tutor thread").first()).toBeVisible();
-    await expect(page.getByText("Your quote-tutor post is ready").first()).toBeVisible();
+    await expect(page.getByText("You reposted a tutor signal").first()).toBeVisible();
+    await expect(page.getByText("You checked this model").first()).toBeVisible();
     await expect(page.getByText("1 learner").first()).toBeVisible();
     await expect(page.getByText("Poll: your RAG bot is hallucinating. What do you check first?").first()).toBeVisible();
+  });
+
+  test("only presents learner controls with truthful behavior", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
+    await expect(page.getByPlaceholder("Search Twutor")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Explore" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "More" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Reply to post" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Quote tutor post" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Show new tutor posts" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Open post signal" })).toHaveCount(0);
+    await expect(page.getByText("Build Lab planned", { exact: true })).toBeVisible();
+    await expect(page.getByText("Search and exploration are coming next", { exact: true })).toBeVisible();
+  });
+
+  test("keeps a hidden post out of the feed after reload", async ({ page }) => {
+    await page.goto("/");
+
+    const post = page.locator("article").filter({ hasText: "A useful AI trace should answer" });
+    await expect(post).toBeVisible();
+    await post.getByRole("button", { name: "Hide post" }).click();
+    await expect(post).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.getByText("A useful AI trace should answer")).toHaveCount(0);
   });
 
   test("exposes the guarded agentic intents admin surface in dev", async ({ page }) => {

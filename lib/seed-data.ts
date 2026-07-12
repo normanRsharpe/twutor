@@ -395,8 +395,7 @@ export function buildSeedRows({ tutors, posts }: { tutors: Record<TutorId, Tutor
       { learnerId: demoLearnerId, postId: "evals-after-bug", eventType: "saved" as const },
       { learnerId: demoLearnerId, postId: "model-gateway", eventType: "saved" as const },
       { learnerId: demoLearnerId, postId: "ai-trace", eventType: "opened" as const },
-      { learnerId: demoLearnerId, postId: "retrieval-first", eventType: "revisited" as const },
-      { learnerId: demoLearnerId, postId: "rag-poll", eventType: "hidden" as const }
+      { learnerId: demoLearnerId, postId: "retrieval-first", eventType: "revisited" as const }
     ]),
     learningStates: [
       {

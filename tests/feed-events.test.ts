@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { posts, tutors } from "@/data/twutor";
-import { buildFeedEventRows, createFeedEventRow, getSeenPostIdsFromEvents, recordFeedEvent } from "@/lib/feed-events";
+import { buildFeedEventRows, createFeedEventRow, getHiddenPostIdsFromEvents, getSeenPostIdsFromEvents, recordFeedEvent } from "@/lib/feed-events";
 import { buildSeedRows, demoLearnerId } from "@/lib/seed-data";
 
 describe("feed exposure and feedback events", () => {
@@ -29,6 +29,16 @@ describe("feed exposure and feedback events", () => {
       expect.objectContaining({ id: "feed-event-norman-ai-trace-opened-1", metadata: { surface: "feed" } }),
       expect.objectContaining({ id: "feed-event-norman-rag-poll-hidden-2", metadata: { surface: "feed" } })
     ]);
+  });
+
+  it("identifies posts hidden or dismissed by the learner", () => {
+    const events = buildFeedEventRows([
+      { learnerId: demoLearnerId, postId: "keep", eventType: "shown" },
+      { learnerId: demoLearnerId, postId: "hide", eventType: "hidden" },
+      { learnerId: demoLearnerId, postId: "dismiss", eventType: "dismissed" }
+    ]);
+
+    expect(getHiddenPostIdsFromEvents(events)).toEqual(["hide", "dismiss"]);
   });
 
   it("appends timestamped feedback events for server actions", () => {

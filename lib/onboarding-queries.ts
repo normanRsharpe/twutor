@@ -1,9 +1,22 @@
 import { and, eq } from "drizzle-orm";
-import { getDb } from "@/lib/db/client";
+import { getDatabaseUrl, getDb } from "@/lib/db/client";
 import { learnerLearningStates, learnerOnboardings, tutorFollows } from "@/lib/db/schema";
 import { createColdStartLearningState, normalizeOnboardingSelection } from "@/lib/onboarding";
 
 export async function getLearnerOnboarding(learnerId: string) {
+  if (!getDatabaseUrl()) {
+    return {
+      learnerId,
+      goal: null,
+      level: null,
+      cadence: null,
+      topics: [],
+      tutorIds: [],
+      completedAt: new Date(0),
+      skippedAt: null,
+      updatedAt: new Date(0)
+    };
+  }
   const [onboarding] = await getDb().select().from(learnerOnboardings).where(eq(learnerOnboardings.learnerId, learnerId)).limit(1);
   return onboarding ?? null;
 }
