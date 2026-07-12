@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { posts, tutors } from "@/data/twutor";
-import { buildFeedEventRows, createFeedEventRow, getHiddenPostIdsFromEvents, getSeenPostIdsFromEvents, recordFeedEvent } from "@/lib/feed-events";
+import { buildFeedEventRows, createFeedEventRow, createLearnerFeedbackEvent, getHiddenPostIdsFromEvents, getSeenPostIdsFromEvents, isLearnerFeedbackSignal, recordFeedEvent } from "@/lib/feed-events";
 import { buildSeedRows, demoLearnerId } from "@/lib/seed-data";
 
 describe("feed exposure and feedback events", () => {
@@ -25,10 +25,24 @@ describe("feed exposure and feedback events", () => {
     ]);
 
     expect(events).toEqual([
-      expect.objectContaining({ id: "feed-event-norman-model-gateway-saved-0", metadata: { surface: "feed" } }),
-      expect.objectContaining({ id: "feed-event-norman-ai-trace-opened-1", metadata: { surface: "feed" } }),
-      expect.objectContaining({ id: "feed-event-norman-rag-poll-hidden-2", metadata: { surface: "feed" } })
+      expect.objectContaining({ id: "feed-event-norman-model-gateway-saved-0", metadata: { surface: "feed", stage: "interaction" } }),
+      expect.objectContaining({ id: "feed-event-norman-ai-trace-opened-1", metadata: { surface: "feed", stage: "interaction" } }),
+      expect.objectContaining({ id: "feed-event-norman-rag-poll-hidden-2", metadata: { surface: "feed", stage: "interaction" } })
     ]);
+  });
+
+  it.each([
+    ["shown", "impression"],
+    ["opened", "interaction"],
+    ["saved", "interaction"],
+    ["completed", "completion"]
+  ] as const)("classifies %s events as %s instrumentation", (eventType, stage) => {
+    const event = createFeedEventRow(
+      { learnerId: demoLearnerId, postId: "model-gateway", eventType },
+      { idGenerator: () => "stage" }
+    );
+
+    expect(event.metadata).toMatchObject({ surface: "feed", stage });
   });
 
   it("identifies posts hidden or dismissed by the learner", () => {
@@ -74,5 +88,92 @@ describe("feed exposure and feedback events", () => {
     expect(first.id).toBe("feed-event-norman-model-gateway-opened-11111111-1111-4111-8111-111111111111");
     expect(second.id).toBe("feed-event-norman-model-gateway-opened-22222222-2222-4222-8222-222222222222");
     expect(first.id).not.toBe(second.id);
+  });
+
+  it("accepts only supported explicit feedback signals", () => {
+    expect(isLearnerFeedbackSignal("more_like_this")).toBe(true);
+    expect(isLearnerFeedbackSignal("need_an_example")).toBe(true);
+    expect(isLearnerFeedbackSignal("survey_answer")).toBe(false);
+    expect(isLearnerFeedbackSignal(null)).toBe(false);
+  });
+
+  it.each([
+    ["more_like_this", false],
+    ["less_like_this", true],
+    ["too_advanced", true],
+    ["need_an_example", false]
+  ] as const)("records %s as explicit feedback without conflating it with a native interaction", (signal, suppressesPost) => {
+    const event = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal },
+      { idGenerator: () => "feedback-id" }
+    );
+
+    expect(event).toMatchObject({
+      learnerId: "learner-a",
+      postId: "post-1",
+      eventType: "feedback",
+      metadata: { surface: "feed", feedbackSignal: signal, suppressesPost }
+    });
+  });
+
+  it("uses the latest explicit signal so a learner can reverse feed suppression", () => {
+    const lessLikeThis = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal: "less_like_this" },
+      { idGenerator: () => "less-like-this" }
+    );
+    const reversed = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal: "more_like_this" },
+      { idGenerator: () => "more-like-this" }
+    );
+
+    expect(getHiddenPostIdsFromEvents([lessLikeThis])).toEqual(["post-1"]);
+    expect(getHiddenPostIdsFromEvents([lessLikeThis, reversed])).toEqual([]);
+  });
+
+  it("isolates suppression signals to the authenticated learner", () => {
+    const learnerA = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal: "less_like_this" },
+      { idGenerator: () => "learner-a" }
+    );
+    const learnerB = createLearnerFeedbackEvent(
+      { learnerId: "learner-b", postId: "post-2", signal: "too_advanced" },
+      { idGenerator: () => "learner-b" }
+    );
+
+    expect(getHiddenPostIdsFromEvents([learnerA, learnerB], "learner-a")).toEqual(["post-1"]);
+    expect(getHiddenPostIdsFromEvents([learnerA, learnerB], "learner-b")).toEqual(["post-2"]);
+  });
+
+  it("uses event time rather than query order when reversing feedback", () => {
+    const suppressed = createLearnerFeedbackEvent({
+      learnerId: "learner-a",
+      postId: "post-1",
+      signal: "less_like_this"
+    });
+    const reversed = createLearnerFeedbackEvent({
+      learnerId: "learner-a",
+      postId: "post-1",
+      signal: "more_like_this"
+    });
+    suppressed.occurredAt = new Date("2026-07-12T10:00:00Z");
+    reversed.occurredAt = new Date("2026-07-12T10:01:00Z");
+
+    expect(getHiddenPostIdsFromEvents([reversed, suppressed], "learner-a")).toEqual([]);
+  });
+
+  it("uses event ids to resolve feedback recorded at the same time", () => {
+    const occurredAt = new Date("2026-07-12T10:00:00Z");
+    const suppressed = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal: "less_like_this" },
+      { idGenerator: () => "0001" }
+    );
+    const reversed = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal: "more_like_this" },
+      { idGenerator: () => "0002" }
+    );
+    suppressed.occurredAt = occurredAt;
+    reversed.occurredAt = occurredAt;
+
+    expect(getHiddenPostIdsFromEvents([reversed, suppressed], "learner-a")).toEqual([]);
   });
 });

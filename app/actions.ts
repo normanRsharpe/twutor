@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAskTutorThreadFromQuestion } from "@/lib/ask-tutor-queries";
 import { requireCurrentLearner } from "@/lib/auth/server";
-import { recordPostFeedEvent, setPostSaved, setTutorFollow } from "@/lib/feed-queries";
+import { recordLearnerFeedback, recordPostFeedEvent, setPostSaved, setTutorFollow } from "@/lib/feed-queries";
+import { isLearnerFeedbackSignal } from "@/lib/feed-events";
 import { runObservedAction } from "@/lib/operational-events";
 import { addLearnerPostReaction, addLearnerPostReply, addLearnerQuoteTutorPost, saveLearnerPollVote } from "@/lib/social-texture-queries";
 
@@ -69,6 +70,17 @@ export async function recordPostHidden(formData: FormData) {
   if (!postId) return;
 
   await recordPostFeedEvent(learner.id, postId, "hidden", { surface: "feed", interaction: "hide" });
+  revalidatePath("/");
+}
+
+export async function submitLearnerFeedback(formData: FormData) {
+  const learner = await requireCurrentLearner();
+  const postId = String(formData.get("postId") ?? "");
+  const signal = formData.get("signal");
+
+  if (!postId || !isLearnerFeedbackSignal(signal)) return;
+
+  await recordLearnerFeedback(learner.id, postId, signal);
   revalidatePath("/");
 }
 

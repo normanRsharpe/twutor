@@ -17,7 +17,7 @@ import {
   tutorFollows,
   tutors
 } from "@/lib/db/schema";
-import { createFeedEventRow, getHiddenPostIdsFromEvents, type FeedEventType } from "@/lib/feed-events";
+import { createFeedEventRow, createLearnerFeedbackEvent, getHiddenPostIdsFromEvents, type FeedEventType, type LearnerFeedbackSignal } from "@/lib/feed-events";
 import {
   getFallbackLearnerMemoryState,
   updateFallbackLearnerPostSaved,
@@ -51,7 +51,24 @@ export type TutorView = Tutor & {
   };
 };
 
-const fallbackHiddenPostIds = new Set<string>();
+const fallbackHiddenPostIdsByLearner = new Map<string, Set<string>>();
+const fallbackFeedbackSuppressedPostIdsByLearner = new Map<string, Set<string>>();
+
+function getFallbackHiddenPostIds(learnerId: string) {
+  const existing = fallbackHiddenPostIdsByLearner.get(learnerId);
+  if (existing) return existing;
+  const hiddenPostIds = new Set<string>();
+  fallbackHiddenPostIdsByLearner.set(learnerId, hiddenPostIds);
+  return hiddenPostIds;
+}
+
+function getFallbackFeedbackSuppressedPostIds(learnerId: string) {
+  const existing = fallbackFeedbackSuppressedPostIdsByLearner.get(learnerId);
+  if (existing) return existing;
+  const suppressedPostIds = new Set<string>();
+  fallbackFeedbackSuppressedPostIdsByLearner.set(learnerId, suppressedPostIds);
+  return suppressedPostIds;
+}
 
 export type FeedPost = Post;
 
@@ -240,7 +257,15 @@ async function fallbackFeedData({ learnerId, tutorId, feed = "for-you" }: { lear
   const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
   const feedPosts = assembleFeedPosts(memorySeed, new Set(memorySeed.savedPosts.map((saved) => saved.postId)));
   const socialActivity = await getSocialActivitySummary(feedPosts, learnerId);
-  const visiblePosts = applySocialMetrics(filterPostsForFeed(feedPosts, feed, followed, fallbackHiddenPostIds).filter((post) => !tutorId || post.tutorId === tutorId), socialActivity);
+  const visiblePosts = applySocialMetrics(
+    filterPostsForFeed(
+      feedPosts,
+      feed,
+      followed,
+      new Set([...getFallbackHiddenPostIds(learnerId), ...getFallbackFeedbackSuppressedPostIds(learnerId)])
+    ).filter((post) => !tutorId || post.tutorId === tutorId),
+    socialActivity
+  );
 
   return {
     tutors: tutorViews,
@@ -289,7 +314,7 @@ export async function getFeedData({ learnerId, tutorId, feed = "for-you" }: { le
   const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
 
   const assembledPosts = assembleFeedPosts(seedLike, new Set(savedRows.map((saved) => saved.postId)));
-  const hiddenPostIds = new Set(getHiddenPostIdsFromEvents(feedEventRows));
+  const hiddenPostIds = new Set(getHiddenPostIdsFromEvents(feedEventRows, learnerId));
   const socialActivity = await getSocialActivitySummary(assembledPosts, learnerId);
 
   return {
@@ -328,11 +353,22 @@ export async function setTutorFollow(learnerId: string, tutorId: string, follow:
 
 export async function recordPostFeedEvent(learnerId: string, postId: string, eventType: FeedEventType, metadata: Record<string, unknown> = { surface: "feed" }) {
   if (!getDatabaseUrl()) {
-    if (eventType === "hidden" || eventType === "dismissed") fallbackHiddenPostIds.add(postId);
+    if (eventType === "hidden" || eventType === "dismissed") getFallbackHiddenPostIds(learnerId).add(postId);
     return;
   }
   const db = getDb();
   await db.insert(feedEvents).values(createFeedEventRow({ learnerId, postId, eventType, metadata }));
+}
+
+export async function recordLearnerFeedback(learnerId: string, postId: string, signal: LearnerFeedbackSignal) {
+  const suppressesPost = signal === "less_like_this" || signal === "too_advanced";
+  if (!getDatabaseUrl()) {
+    const suppressedPostIds = getFallbackFeedbackSuppressedPostIds(learnerId);
+    if (suppressesPost) suppressedPostIds.add(postId);
+    else suppressedPostIds.delete(postId);
+    return;
+  }
+  await getDb().insert(feedEvents).values(createLearnerFeedbackEvent({ learnerId, postId, signal }));
 }
 
 export async function setPostSaved(learnerId: string, postId: string, saved: boolean) {

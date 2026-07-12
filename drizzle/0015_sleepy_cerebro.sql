@@ -1,0 +1,1 @@
+ALTER TYPE "public"."feed_event_type" ADD VALUE 'feedback';
