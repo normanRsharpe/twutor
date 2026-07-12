@@ -5,6 +5,12 @@ export type FeedEventType = "shown" | "opened" | "saved" | "unsaved" | "hidden" 
 
 export type LearnerFeedbackSignal = "more_like_this" | "less_like_this" | "too_advanced" | "need_an_example";
 
+const learnerFeedbackSignals = new Set<LearnerFeedbackSignal>(["more_like_this", "less_like_this", "too_advanced", "need_an_example"]);
+
+export function isLearnerFeedbackSignal(value: unknown): value is LearnerFeedbackSignal {
+  return typeof value === "string" && learnerFeedbackSignals.has(value as LearnerFeedbackSignal);
+}
+
 export type LearnerFeedbackInput = {
   learnerId: string;
   postId: string;
@@ -25,6 +31,13 @@ export type FeedEventRow = typeof feedEvents.$inferInsert;
 export type RuntimeFeedEventOptions = {
   idGenerator?: () => string;
 };
+
+let runtimeEventSequence = 0;
+
+function runtimeEventSuffix() {
+  runtimeEventSequence += 1;
+  return `${Date.now().toString().padStart(13, "0")}-${runtimeEventSequence.toString().padStart(8, "0")}-${randomUUID()}`;
+}
 
 const seenEventTypes = new Set<FeedEventType>(["shown", "opened", "saved", "revisited"]);
 
@@ -49,7 +62,7 @@ export function buildFeedEventRows(inputs: FeedEventInput[]): FeedEventRow[] {
 }
 
 export function createFeedEventRow(input: FeedEventInput, options: RuntimeFeedEventOptions = {}): FeedEventRow {
-  return feedEventRow(input, eventId(input, options.idGenerator?.() ?? randomUUID()));
+  return feedEventRow(input, eventId(input, options.idGenerator?.() ?? runtimeEventSuffix()));
 }
 
 export function createLearnerFeedbackEvent(input: LearnerFeedbackInput, options: RuntimeFeedEventOptions = {}): FeedEventRow {
@@ -73,13 +86,28 @@ export function getSeenPostIdsFromEvents(events: Pick<FeedEventRow, "postId" | "
   return Array.from(new Set(events.filter((event) => seenEventTypes.has(event.eventType)).map((event) => event.postId)));
 }
 
-export function getHiddenPostIdsFromEvents(events: Pick<FeedEventRow, "postId" | "eventType" | "metadata">[]) {
+export function getHiddenPostIdsFromEvents(
+  events: Pick<FeedEventRow, "id" | "learnerId" | "postId" | "eventType" | "metadata" | "occurredAt">[],
+  learnerId?: string
+) {
   const hiddenPostIds = new Set<string>();
   const explicitlySuppressed = new Map<string, boolean>();
 
   for (const event of events) {
+    if (learnerId && event.learnerId !== learnerId) continue;
     if (event.eventType === "hidden" || event.eventType === "dismissed") hiddenPostIds.add(event.postId);
-    if (event.eventType === "feedback" && event.metadata && typeof event.metadata === "object" && "suppressesPost" in event.metadata) {
+  }
+
+  const chronologicalFeedbackEvents = events
+    .map((event, index) => ({ event, index }))
+    .filter(({ event }) => event.eventType === "feedback" && (!learnerId || event.learnerId === learnerId))
+    .sort((left, right) => {
+      const timeDifference = (left.event.occurredAt?.getTime() ?? 0) - (right.event.occurredAt?.getTime() ?? 0);
+      return timeDifference || left.event.id.localeCompare(right.event.id) || left.index - right.index;
+    });
+
+  for (const { event } of chronologicalFeedbackEvents) {
+    if (event.metadata && typeof event.metadata === "object" && "suppressesPost" in event.metadata) {
       explicitlySuppressed.set(event.postId, event.metadata.suppressesPost === true);
     }
   }

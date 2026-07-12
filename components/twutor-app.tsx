@@ -3,7 +3,7 @@
 import { EyeOff, LogOut, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { askTutors, reactToPost, recordPostHidden, togglePostSaved, toggleTutorFollow, voteOnPoll } from "@/app/actions";
+import { askTutors, reactToPost, recordPostHidden, submitLearnerFeedback, togglePostSaved, toggleTutorFollow, voteOnPoll } from "@/app/actions";
 import { signOut } from "@/app/auth-actions";
 import {
   actionIcons,
@@ -273,6 +273,7 @@ function PostCard({ post, tutors }: { post: Post; tutors: Record<TutorId, TutorV
         {post.trace ? <Trace data={post.trace} /> : null}
         {post.challenge ? <Challenge {...post.challenge} /> : null}
         <Actions post={post} />
+        <FeedbackControls postId={post.id} />
       </div>
     </article>
   );
@@ -382,6 +383,32 @@ function Actions({ post }: { post: Post }) {
         </button>
       </form>
     </div>
+  );
+}
+
+const feedbackChoices = [
+  ["more_like_this", "More like this"],
+  ["less_like_this", "Less like this"],
+  ["too_advanced", "Too advanced"],
+  ["need_an_example", "Need an example"]
+] as const;
+
+function FeedbackControls({ postId }: { postId: string }) {
+  return (
+    <details className="mt-3 text-sm text-tw-muted">
+      <summary className="w-fit cursor-pointer font-bold hover:text-white">Tune this lesson</summary>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {feedbackChoices.map(([signal, label]) => (
+          <form key={signal} action={submitLearnerFeedback}>
+            <input type="hidden" name="postId" value={postId} />
+            <input type="hidden" name="signal" value={signal} />
+            <button className="rounded-full border border-tw-border px-3 py-1.5 font-bold transition hover:border-tw-blue hover:text-white">
+              {label}
+            </button>
+          </form>
+        ))}
+      </div>
+    </details>
   );
 }
 

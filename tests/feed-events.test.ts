@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { posts, tutors } from "@/data/twutor";
-import { buildFeedEventRows, createFeedEventRow, createLearnerFeedbackEvent, getHiddenPostIdsFromEvents, getSeenPostIdsFromEvents, recordFeedEvent } from "@/lib/feed-events";
+import { buildFeedEventRows, createFeedEventRow, createLearnerFeedbackEvent, getHiddenPostIdsFromEvents, getSeenPostIdsFromEvents, isLearnerFeedbackSignal, recordFeedEvent } from "@/lib/feed-events";
 import { buildSeedRows, demoLearnerId } from "@/lib/seed-data";
 
 describe("feed exposure and feedback events", () => {
@@ -76,6 +76,13 @@ describe("feed exposure and feedback events", () => {
     expect(first.id).not.toBe(second.id);
   });
 
+  it("accepts only supported explicit feedback signals", () => {
+    expect(isLearnerFeedbackSignal("more_like_this")).toBe(true);
+    expect(isLearnerFeedbackSignal("need_an_example")).toBe(true);
+    expect(isLearnerFeedbackSignal("survey_answer")).toBe(false);
+    expect(isLearnerFeedbackSignal(null)).toBe(false);
+  });
+
   it.each([
     ["more_like_this", false],
     ["less_like_this", true],
@@ -107,5 +114,52 @@ describe("feed exposure and feedback events", () => {
 
     expect(getHiddenPostIdsFromEvents([lessLikeThis])).toEqual(["post-1"]);
     expect(getHiddenPostIdsFromEvents([lessLikeThis, reversed])).toEqual([]);
+  });
+
+  it("isolates suppression signals to the authenticated learner", () => {
+    const learnerA = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal: "less_like_this" },
+      { idGenerator: () => "learner-a" }
+    );
+    const learnerB = createLearnerFeedbackEvent(
+      { learnerId: "learner-b", postId: "post-2", signal: "too_advanced" },
+      { idGenerator: () => "learner-b" }
+    );
+
+    expect(getHiddenPostIdsFromEvents([learnerA, learnerB], "learner-a")).toEqual(["post-1"]);
+    expect(getHiddenPostIdsFromEvents([learnerA, learnerB], "learner-b")).toEqual(["post-2"]);
+  });
+
+  it("uses event time rather than query order when reversing feedback", () => {
+    const suppressed = createLearnerFeedbackEvent({
+      learnerId: "learner-a",
+      postId: "post-1",
+      signal: "less_like_this"
+    });
+    const reversed = createLearnerFeedbackEvent({
+      learnerId: "learner-a",
+      postId: "post-1",
+      signal: "more_like_this"
+    });
+    suppressed.occurredAt = new Date("2026-07-12T10:00:00Z");
+    reversed.occurredAt = new Date("2026-07-12T10:01:00Z");
+
+    expect(getHiddenPostIdsFromEvents([reversed, suppressed], "learner-a")).toEqual([]);
+  });
+
+  it("uses event ids to resolve feedback recorded at the same time", () => {
+    const occurredAt = new Date("2026-07-12T10:00:00Z");
+    const suppressed = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal: "less_like_this" },
+      { idGenerator: () => "0001" }
+    );
+    const reversed = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal: "more_like_this" },
+      { idGenerator: () => "0002" }
+    );
+    suppressed.occurredAt = occurredAt;
+    reversed.occurredAt = occurredAt;
+
+    expect(getHiddenPostIdsFromEvents([reversed, suppressed], "learner-a")).toEqual([]);
   });
 });
