@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { posts, tutors } from "@/data/twutor";
-import { buildFeedEventRows, createFeedEventRow, getHiddenPostIdsFromEvents, getSeenPostIdsFromEvents, recordFeedEvent } from "@/lib/feed-events";
+import { buildFeedEventRows, createFeedEventRow, createLearnerFeedbackEvent, getHiddenPostIdsFromEvents, getSeenPostIdsFromEvents, recordFeedEvent } from "@/lib/feed-events";
 import { buildSeedRows, demoLearnerId } from "@/lib/seed-data";
 
 describe("feed exposure and feedback events", () => {
@@ -74,5 +74,38 @@ describe("feed exposure and feedback events", () => {
     expect(first.id).toBe("feed-event-norman-model-gateway-opened-11111111-1111-4111-8111-111111111111");
     expect(second.id).toBe("feed-event-norman-model-gateway-opened-22222222-2222-4222-8222-222222222222");
     expect(first.id).not.toBe(second.id);
+  });
+
+  it.each([
+    ["more_like_this", false],
+    ["less_like_this", true],
+    ["too_advanced", true],
+    ["need_an_example", false]
+  ] as const)("records %s as explicit feedback without conflating it with a native interaction", (signal, suppressesPost) => {
+    const event = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal },
+      { idGenerator: () => "feedback-id" }
+    );
+
+    expect(event).toMatchObject({
+      learnerId: "learner-a",
+      postId: "post-1",
+      eventType: "feedback",
+      metadata: { surface: "feed", feedbackSignal: signal, suppressesPost }
+    });
+  });
+
+  it("uses the latest explicit signal so a learner can reverse feed suppression", () => {
+    const lessLikeThis = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal: "less_like_this" },
+      { idGenerator: () => "less-like-this" }
+    );
+    const reversed = createLearnerFeedbackEvent(
+      { learnerId: "learner-a", postId: "post-1", signal: "more_like_this" },
+      { idGenerator: () => "more-like-this" }
+    );
+
+    expect(getHiddenPostIdsFromEvents([lessLikeThis])).toEqual(["post-1"]);
+    expect(getHiddenPostIdsFromEvents([lessLikeThis, reversed])).toEqual([]);
   });
 });
