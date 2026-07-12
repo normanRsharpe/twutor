@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { feedEvents } from "@/lib/db/schema";
 
-export type FeedEventType = "shown" | "opened" | "saved" | "unsaved" | "hidden" | "dismissed" | "revisited" | "feedback";
+export type FeedEventType = "shown" | "opened" | "saved" | "unsaved" | "hidden" | "dismissed" | "revisited" | "feedback" | "completed";
+export type FeedEventStage = "impression" | "interaction" | "completion";
 
 export type LearnerFeedbackSignal = "more_like_this" | "less_like_this" | "too_advanced" | "need_an_example";
 
@@ -41,6 +42,12 @@ function runtimeEventSuffix() {
 
 const seenEventTypes = new Set<FeedEventType>(["shown", "opened", "saved", "revisited"]);
 
+function feedEventStage(eventType: FeedEventType): FeedEventStage {
+  if (eventType === "shown") return "impression";
+  if (eventType === "completed") return "completion";
+  return "interaction";
+}
+
 function eventId({ learnerId, postId, eventType }: FeedEventInput, suffix: number | string) {
   return `feed-event-${learnerId}-${postId}-${eventType}-${suffix}`;
 }
@@ -52,7 +59,7 @@ function feedEventRow(input: FeedEventInput, id: string): FeedEventRow {
     postId: input.postId,
     agenticPostIntentId: input.agenticPostIntentId ?? null,
     eventType: input.eventType,
-    metadata: input.metadata ?? { surface: "feed" },
+    metadata: { surface: "feed", ...input.metadata, stage: feedEventStage(input.eventType) },
     ...(input.occurredAt ? { occurredAt: input.occurredAt } : {})
   };
 }

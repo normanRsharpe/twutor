@@ -25,10 +25,24 @@ describe("feed exposure and feedback events", () => {
     ]);
 
     expect(events).toEqual([
-      expect.objectContaining({ id: "feed-event-norman-model-gateway-saved-0", metadata: { surface: "feed" } }),
-      expect.objectContaining({ id: "feed-event-norman-ai-trace-opened-1", metadata: { surface: "feed" } }),
-      expect.objectContaining({ id: "feed-event-norman-rag-poll-hidden-2", metadata: { surface: "feed" } })
+      expect.objectContaining({ id: "feed-event-norman-model-gateway-saved-0", metadata: { surface: "feed", stage: "interaction" } }),
+      expect.objectContaining({ id: "feed-event-norman-ai-trace-opened-1", metadata: { surface: "feed", stage: "interaction" } }),
+      expect.objectContaining({ id: "feed-event-norman-rag-poll-hidden-2", metadata: { surface: "feed", stage: "interaction" } })
     ]);
+  });
+
+  it.each([
+    ["shown", "impression"],
+    ["opened", "interaction"],
+    ["saved", "interaction"],
+    ["completed", "completion"]
+  ] as const)("classifies %s events as %s instrumentation", (eventType, stage) => {
+    const event = createFeedEventRow(
+      { learnerId: demoLearnerId, postId: "model-gateway", eventType },
+      { idGenerator: () => "stage" }
+    );
+
+    expect(event.metadata).toMatchObject({ surface: "feed", stage });
   });
 
   it("identifies posts hidden or dismissed by the learner", () => {
