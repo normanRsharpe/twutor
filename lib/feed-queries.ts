@@ -17,7 +17,7 @@ import {
   tutorFollows,
   tutors
 } from "@/lib/db/schema";
-import { createFeedEventRow, type FeedEventType } from "@/lib/feed-events";
+import { createFeedEventRow, getHiddenPostIdsFromEvents, type FeedEventType } from "@/lib/feed-events";
 import {
   getFallbackLearnerMemoryState,
   updateFallbackLearnerPostSaved,
@@ -50,6 +50,8 @@ export type TutorView = Tutor & {
     url: string;
   };
 };
+
+const fallbackHiddenPostIds = new Set<string>();
 
 export type FeedPost = Post;
 
@@ -109,10 +111,11 @@ export function getLatestPostByTutor(feedPosts: Pick<Post, "tutorId" | "body">[]
   }, {});
 }
 
-export function filterPostsForFeed(feedPosts: FeedPost[], feed: FeedKind, followedTutorIds: Set<TutorId>) {
-  if (feed === "following") return feedPosts.filter((post) => followedTutorIds.has(post.tutorId));
-  if (feed === "saved") return feedPosts.filter((post) => post.isSaved);
-  return feedPosts;
+export function filterPostsForFeed(feedPosts: FeedPost[], feed: FeedKind, followedTutorIds: Set<TutorId>, hiddenPostIds = new Set<string>()) {
+  const visiblePosts = feedPosts.filter((post) => !hiddenPostIds.has(post.id));
+  if (feed === "following") return visiblePosts.filter((post) => followedTutorIds.has(post.tutorId));
+  if (feed === "saved") return visiblePosts.filter((post) => post.isSaved);
+  return visiblePosts;
 }
 
 export function assembleLearningArc(state: SeedRows["learningStates"][number] | undefined, savedPostCount: number): LearningArc {
@@ -237,7 +240,7 @@ async function fallbackFeedData({ learnerId, tutorId, feed = "for-you" }: { lear
   const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
   const feedPosts = assembleFeedPosts(memorySeed, new Set(memorySeed.savedPosts.map((saved) => saved.postId)));
   const socialActivity = await getSocialActivitySummary(feedPosts, learnerId);
-  const visiblePosts = applySocialMetrics(filterPostsForFeed(feedPosts, feed, followed).filter((post) => !tutorId || post.tutorId === tutorId), socialActivity);
+  const visiblePosts = applySocialMetrics(filterPostsForFeed(feedPosts, feed, followed, fallbackHiddenPostIds).filter((post) => !tutorId || post.tutorId === tutorId), socialActivity);
 
   return {
     tutors: tutorViews,
@@ -253,7 +256,7 @@ export async function getFeedData({ learnerId, tutorId, feed = "for-you" }: { le
   if (!getDatabaseUrl()) return await fallbackFeedData({ learnerId, tutorId, feed });
 
   const db = getDb();
-  const [tutorRows, followRows, savedRows, learningStateRows, assetRows, postRows, metricRows, diagramRows, quoteRows, pollRows, traceRows, challengeRows] = await Promise.all([
+  const [tutorRows, followRows, savedRows, learningStateRows, assetRows, postRows, metricRows, diagramRows, quoteRows, pollRows, traceRows, challengeRows, feedEventRows] = await Promise.all([
     db.select().from(tutors).orderBy(asc(tutors.name)),
     db.select().from(tutorFollows).where(eq(tutorFollows.learnerId, learnerId)),
     db.select().from(learnerSavedPosts).where(eq(learnerSavedPosts.learnerId, learnerId)),
@@ -267,7 +270,8 @@ export async function getFeedData({ learnerId, tutorId, feed = "for-you" }: { le
     db.select().from(quotePosts),
     db.select().from(pollOptions),
     db.select().from(traceCards),
-    db.select().from(challenges)
+    db.select().from(challenges),
+    db.select().from(feedEvents).where(eq(feedEvents.learnerId, learnerId))
   ]);
 
   const visiblePostIds = new Set(postRows.map((post) => post.id));
@@ -285,11 +289,12 @@ export async function getFeedData({ learnerId, tutorId, feed = "for-you" }: { le
   const followed = new Set((Object.keys(tutorViews) as TutorId[]).filter((id) => tutorViews[id].isFollowed));
 
   const assembledPosts = assembleFeedPosts(seedLike, new Set(savedRows.map((saved) => saved.postId)));
+  const hiddenPostIds = new Set(getHiddenPostIdsFromEvents(feedEventRows));
   const socialActivity = await getSocialActivitySummary(assembledPosts, learnerId);
 
   return {
     tutors: tutorViews,
-    posts: applySocialMetrics(filterPostsForFeed(assembledPosts, feed, followed), socialActivity),
+    posts: applySocialMetrics(filterPostsForFeed(assembledPosts, feed, followed, hiddenPostIds), socialActivity),
     tutorsToFollow: (Object.keys(tutorViews) as TutorId[]).filter((id) => !tutorViews[id].isFollowed).slice(0, 2),
     activeFeed: feed,
     learningArc: assembleLearningArc(learningStateRows[0], savedRows.length),
@@ -322,7 +327,10 @@ export async function setTutorFollow(learnerId: string, tutorId: string, follow:
 }
 
 export async function recordPostFeedEvent(learnerId: string, postId: string, eventType: FeedEventType, metadata: Record<string, unknown> = { surface: "feed" }) {
-  if (!getDatabaseUrl()) return;
+  if (!getDatabaseUrl()) {
+    if (eventType === "hidden" || eventType === "dismissed") fallbackHiddenPostIds.add(postId);
+    return;
+  }
   const db = getDb();
   await db.insert(feedEvents).values(createFeedEventRow({ learnerId, postId, eventType, metadata }));
 }

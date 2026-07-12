@@ -3,7 +3,7 @@
 import { EyeOff, LogOut, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { askTutors, reactToPost, recordPostHidden, recordPostOpened, togglePostSaved, toggleTutorFollow, voteOnPoll } from "@/app/actions";
+import { askTutors, reactToPost, recordPostHidden, togglePostSaved, toggleTutorFollow, voteOnPoll } from "@/app/actions";
 import { signOut } from "@/app/auth-actions";
 import {
   actionIcons,
@@ -73,7 +73,7 @@ function LeftNav({ onCue, learnerIdentity }: { onCue: (message: string) => void;
     <aside className="sticky top-0 hidden h-screen flex-col gap-3 border-r border-tw-border px-6 py-5 lg:flex">
       <a href="/" className="mb-4 text-[34px] font-black tracking-[-0.08em]">twut<span className="text-tw-blue">or</span></a>
       <nav className="space-y-1" aria-label="Primary">
-        {navItems.filter((item) => item.label !== "Build Lab").map((item) => {
+        {navItems.filter((item) => !["Build Lab", "Explore", "More"].includes(item.label)).map((item) => {
           const href = item.label === "Home" ? "/" : item.label === "Tutor Replies" ? "/replies" : item.label === "Tutors" ? "/tutors" : item.label === "Saved Models" ? "/saved" : item.label === "Progress" ? "/memory" : "#";
           return (
             <a
@@ -365,12 +365,9 @@ function Actions({ post }: { post: Post }) {
         <button className={`${item} text-emerald-500`} aria-label="Check post"><CheckIcon className="h-5 w-5" />{post.metrics.checks}</button>
       </form>
 
-      <form action={recordPostOpened}>
-        <input type="hidden" name="postId" value={post.id} />
-        <button className={item} aria-label="Open post signal">
-          <Views className="h-5 w-5" />{post.metrics.views}
-        </button>
-      </form>
+      <span className={item} aria-label={`${post.metrics.views} views`}>
+        <Views className="h-5 w-5" />{post.metrics.views}
+      </span>
       <form action={recordPostHidden}>
         <input type="hidden" name="postId" value={post.id} />
         <button className={item} aria-label="Hide post">
