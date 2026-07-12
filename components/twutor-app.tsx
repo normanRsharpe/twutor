@@ -1,9 +1,9 @@
 "use client";
 
-import { Brain, EyeOff, LogOut, Search, SendHorizonal, Sparkles } from "lucide-react";
+import { EyeOff, LogOut, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { askTutors, quoteTutorPost, reactToPost, recordPostHidden, recordPostOpened, replyToPost, togglePostSaved, toggleTutorFollow, voteOnPoll } from "@/app/actions";
+import { askTutors, reactToPost, recordPostHidden, recordPostOpened, togglePostSaved, toggleTutorFollow, voteOnPoll } from "@/app/actions";
 import { signOut } from "@/app/auth-actions";
 import {
   actionIcons,
@@ -47,12 +47,9 @@ export function TwutorApp({
         ) : (
           <>
             <Composer onCue={cue} />
-            <button
-              className="w-full border-b border-tw-border py-3 text-center text-tw-blue transition hover:bg-tw-blue/10"
-              onClick={() => cue(selectedTutor ? `Filtered to ${selectedTutor.name}` : feedData.activeFeed === "saved" ? "Saved posts refreshed" : feedData.activeFeed === "following" ? "Following feed refreshed" : "Loaded 3 fresh tutor arguments")}
-            >
-              {selectedTutor ? `Showing ${selectedTutor.name}'s teaching feed` : feedData.activeFeed === "saved" ? "Showing posts you saved" : feedData.activeFeed === "following" ? "Showing posts from tutors you follow" : "Show 3 new tutor posts"}
-            </button>
+            <div className="w-full border-b border-tw-border py-3 text-center text-sm text-tw-muted">
+              {selectedTutor ? `Showing ${selectedTutor.name}'s teaching feed` : feedData.activeFeed === "saved" ? "Showing posts you saved" : feedData.activeFeed === "following" ? "Showing posts from tutors you follow" : "Your current learning feed"}
+            </div>
             <section aria-label="Tutor feed">
               {feedData.posts.length ? (
                 feedData.posts.map((post) => <PostCard key={post.id} post={post} tutors={feedData.tutors} />)
@@ -64,7 +61,6 @@ export function TwutorApp({
         )}
       </main>
       <RightRail tutors={feedData.tutors} tutorsToFollow={feedData.tutorsToFollow} learningArc={feedData.learningArc} socialActivity={feedData.socialActivity} />
-      <FloatingActions />
       {toast ? <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#e7e9ea] px-4 py-2 text-sm font-extrabold text-black shadow-2xl">{toast}</div> : null}
     </div>
   );
@@ -340,27 +336,24 @@ function Challenge({ title, body, cta }: NonNullable<Post["challenge"]>) {
     <div className="mt-3 rounded-2xl border border-amber-600/70 bg-amber-950/20 p-4">
       <div className="font-black text-amber-400">{title}</div>
       <p className="mt-3 leading-snug">{body}</p>
-      <button className="mt-4 rounded-full bg-amber-400 px-4 py-2 text-sm font-black text-black">{cta}</button>
+      <div className="mt-4 flex items-center gap-3 text-sm">
+        <span className="rounded-full border border-amber-600/70 px-4 py-2 font-black text-amber-300">Build Lab planned</span>
+        <span className="text-amber-100/70">{cta}</span>
+      </div>
     </div>
   );
 }
 
 function Actions({ post }: { post: Post }) {
-  const Reply = actionIcons.reply;
   const Repost = actionIcons.repost;
   const CheckIcon = actionIcons.check;
-  const QuoteIcon = Sparkles;
   const Views = actionIcons.views;
   const Bookmark = actionIcons.bookmark;
   const item = "flex items-center gap-1.5 text-sm text-tw-muted";
 
   return (
     <div className="mt-3 flex items-center justify-between pr-7">
-      <form action={replyToPost}>
-        <input type="hidden" name="postId" value={post.id} />
-        <input type="hidden" name="body" value="I would inspect retrieved context first." />
-        <button className={item} aria-label="Reply to post"><Reply className="h-5 w-5" />{post.metrics.replies}</button>
-      </form>
+      <span className={item} aria-label={`${post.metrics.replies} replies`}>{post.metrics.replies} replies</span>
       <form action={reactToPost}>
         <input type="hidden" name="postId" value={post.id} />
         <input type="hidden" name="reactionType" value="repost" />
@@ -371,11 +364,7 @@ function Actions({ post }: { post: Post }) {
         <input type="hidden" name="reactionType" value="check" />
         <button className={`${item} text-emerald-500`} aria-label="Check post"><CheckIcon className="h-5 w-5" />{post.metrics.checks}</button>
       </form>
-      <form action={quoteTutorPost}>
-        <input type="hidden" name="postId" value={post.id} />
-        <input type="hidden" name="body" value="Quoting this tutor thread for review." />
-        <button className={item} aria-label="Quote tutor post"><QuoteIcon className="h-5 w-5" /></button>
-      </form>
+
       <form action={recordPostOpened}>
         <input type="hidden" name="postId" value={post.id} />
         <button className={item} aria-label="Open post signal">
@@ -415,10 +404,9 @@ function RightRail({
 
   return (
     <aside className="sticky top-0 hidden h-screen overflow-y-auto px-6 py-4 lg:block no-scrollbar">
-      <label className="mb-4 flex h-12 items-center gap-3 rounded-full border border-tw-border bg-black px-4 text-tw-muted">
-        <Search className="h-5 w-5" />
-        <input className="w-full bg-transparent outline-none" placeholder="Search Twutor" />
-      </label>
+      <div className="mb-4 rounded-2xl border border-tw-border px-4 py-3 text-sm font-bold text-tw-muted">
+        Search and exploration are coming next
+      </div>
       <RailCard title="Your learning arc">
         <div className="h-2 rounded-full bg-[#24282d]"><div className="h-2 rounded-full bg-gradient-to-r from-tw-blue to-emerald-500" style={{ width: `${learningArc.progressPercent}%` }} /></div>
         <div className="mt-7 font-black">{learningArc.title}</div>
@@ -485,14 +473,5 @@ function FollowForm({ tutor, compact = false }: { tutor: TutorView; compact?: bo
         {tutor.isFollowed ? "Following" : "Follow"}
       </button>
     </form>
-  );
-}
-
-function FloatingActions() {
-  return (
-    <div className="fixed bottom-7 right-7 hidden flex-col gap-3 xl:flex">
-      <button className="grid h-14 w-14 place-items-center rounded-2xl border border-tw-border bg-[#111418] shadow-xl"><Brain className="h-6 w-6" /></button>
-      <button className="grid h-14 w-14 place-items-center rounded-2xl border border-tw-border bg-[#111418] shadow-xl"><SendHorizonal className="h-6 w-6" /></button>
-    </div>
   );
 }

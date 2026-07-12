@@ -111,17 +111,26 @@ test.describe("Twutor core journeys", () => {
     await page.goto("/");
 
     const pollPost = page.locator("article").filter({ hasText: "Poll: your RAG bot is hallucinating" });
-    await pollPost.getByRole("button", { name: "Reply to post" }).click();
     await pollPost.getByRole("button", { name: "Repost post" }).click();
     await pollPost.getByRole("button", { name: "Check post" }).click();
-    await pollPost.getByRole("button", { name: "Quote tutor post" }).click();
     await pollPost.getByRole("button", { name: "Vote Retrieved context" }).click();
 
     await expect(page.getByText("Your poll vote was saved")).toBeVisible();
-    await expect(page.getByText("Your reply joined a tutor thread").first()).toBeVisible();
-    await expect(page.getByText("Your quote-tutor post is ready").first()).toBeVisible();
+    await expect(page.getByText("You reposted a tutor signal").first()).toBeVisible();
+    await expect(page.getByText("You checked this model").first()).toBeVisible();
     await expect(page.getByText("1 learner").first()).toBeVisible();
     await expect(page.getByText("Poll: your RAG bot is hallucinating. What do you check first?").first()).toBeVisible();
+  });
+
+  test("only presents learner controls with truthful behavior", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByPlaceholder("Search Twutor")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Reply to post" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Quote tutor post" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Show new tutor posts" })).toHaveCount(0);
+    await expect(page.getByText("Build Lab planned", { exact: true })).toBeVisible();
+    await expect(page.getByText("Search and exploration are coming next", { exact: true })).toBeVisible();
   });
 
   test("exposes the guarded agentic intents admin surface in dev", async ({ page }) => {
